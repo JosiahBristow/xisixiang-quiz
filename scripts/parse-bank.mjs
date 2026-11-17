@@ -207,7 +207,6 @@ function main() {
   const out = {
     meta: {
       title: '习近平新时代中国特色社会主义思想 · 题库',
-      generatedAt: new Date().toISOString(),
       total,
       chapterCount: chapters.length,
     },

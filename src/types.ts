@@ -20,7 +20,6 @@ export interface Chapter {
 export interface Bank {
   meta: {
     title: string
-    generatedAt: string
     total: number
     chapterCount: number
   }
@@ -45,6 +44,7 @@ export interface Settings {
   theme: ThemeId
   mode: QuizMode
   shuffle: boolean
+  testCount: number
 }
 
 export interface ChapterStat {

@@ -31,6 +31,10 @@ function start(scope: string) {
   router.push({ name: 'quiz', params: { scope } })
 }
 
+function startTest() {
+  router.push({ name: 'test' })
+}
+
 function scrollToChapters() {
   document.getElementById('chapters')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
 }
@@ -99,6 +103,34 @@ function scrollToChapters() {
               <span>待复习错题</span>
             </div>
           </div>
+        </div>
+      </section>
+
+      <section class="test-entry card">
+        <div class="te-main">
+          <span class="te-mark serif">测</span>
+          <div class="te-copy">
+            <h2>随机测试</h2>
+            <p>从 {{ bank.meta.total }} 题中随机抽题，交卷后统一公布答案，错题自动入本。</p>
+          </div>
+        </div>
+        <div class="te-actions">
+          <div class="te-counts" role="group" aria-label="抽题数量">
+            <button
+              v-for="c in [10, 20, 30, 50, 0]"
+              :key="c"
+              :class="{ on: settings.testCount === c }"
+              @click="settings.testCount = c"
+            >
+              {{ c === 0 ? '全部' : c + '题' }}
+            </button>
+          </div>
+          <button class="btn btn-primary" @click="startTest">
+            开始测试
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M5 12h14m0 0-6-6m6 6-6 6" />
+            </svg>
+          </button>
         </div>
       </section>
 
@@ -354,6 +386,89 @@ h1 {
   color: var(--muted);
   letter-spacing: 0.05em;
   white-space: nowrap;
+}
+
+/* ---------- 随机测试入口 ---------- */
+.test-entry {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  margin-top: 16px;
+  padding: 16px 20px;
+  animation: rise 0.5s 0.04s var(--ease) both;
+}
+
+.te-main {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+}
+
+.te-mark {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  flex-shrink: 0;
+  border-radius: 12px;
+  background: var(--accent-soft);
+  border: 1px solid var(--accent-line);
+  color: var(--accent);
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.te-copy h2 {
+  font-family: var(--font-display);
+  font-size: 16.5px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.te-copy p {
+  margin-top: 2px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-2);
+}
+
+.te-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.te-counts {
+  display: flex;
+  gap: 2px;
+  padding: 3px;
+  border-radius: 10px;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+}
+
+.te-counts button {
+  height: 28px;
+  padding: 0 9px;
+  border-radius: 7px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-2);
+  transition: background-color 0.15s, color 0.15s;
+}
+
+.te-counts button:hover {
+  color: var(--text);
+  background: var(--surface-3);
+}
+
+.te-counts button.on {
+  background: var(--accent);
+  color: var(--accent-contrast);
+  font-weight: 600;
 }
 
 /* ---------- 错题本横幅 ---------- */
@@ -690,6 +805,36 @@ h1 {
 
   .wb-text small {
     display: none;
+  }
+
+  .test-entry {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+    padding: 15px;
+  }
+
+  .te-actions {
+    justify-content: space-between;
+    gap: 8px;
+  }
+
+  .te-counts {
+    flex: 1;
+    justify-content: space-between;
+  }
+
+  .te-counts button {
+    flex: 1;
+    padding: 0 4px;
+    font-size: 11.5px;
+  }
+
+  .te-actions .btn {
+    flex-shrink: 0;
+    height: 40px;
+    padding: 0 14px;
+    font-size: 13.5px;
   }
 
   .chapters {

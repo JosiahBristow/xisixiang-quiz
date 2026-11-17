@@ -30,6 +30,24 @@ export function recordAttempt(question: Question, correct: boolean): void {
   window.dispatchEvent(new Event('qz:attempts-changed'))
 }
 
+/** 批量记录（整卷交卷时用），只写一次 localStorage */
+export function recordAttempts(entries: { question: Question; correct: boolean }[]): void {
+  if (!entries.length) return
+  const base = Date.now()
+  entries.forEach((entry, i) => {
+    attempts.push({
+      id: uid(),
+      questionId: entry.question.id,
+      chapter: questionChapterId(entry.question.id),
+      correct: entry.correct,
+      at: new Date(base + i).toISOString(),
+      synced: false,
+    })
+  })
+  persist()
+  window.dispatchEvent(new Event('qz:attempts-changed'))
+}
+
 /** 每题最近一次作答 */
 export const latestByQuestion = computed(() => {
   const map = new Map<string, Attempt>()

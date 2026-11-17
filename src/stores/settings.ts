@@ -4,7 +4,7 @@ import { readJSON, writeJSON } from '../lib/storage'
 
 const KEY = 'qz.settings.v1'
 
-export const settings = reactive<Settings>({ theme: 'auto', mode: 'practice', shuffle: true })
+export const settings = reactive<Settings>({ theme: 'auto', mode: 'practice', shuffle: true, testCount: 20 })
 
 const media = typeof window !== 'undefined' ? window.matchMedia('(prefers-color-scheme: dark)') : null
 
@@ -32,6 +32,7 @@ export function initSettings(): void {
   if (saved.theme) settings.theme = saved.theme
   if (saved.mode) settings.mode = saved.mode
   if (typeof saved.shuffle === 'boolean') settings.shuffle = saved.shuffle
+  if (typeof saved.testCount === 'number') settings.testCount = saved.testCount
 
   applyTheme()
   media?.addEventListener('change', (e) => {
@@ -41,7 +42,12 @@ export function initSettings(): void {
   watch(
     settings,
     () => {
-      writeJSON(KEY, { theme: settings.theme, mode: settings.mode, shuffle: settings.shuffle })
+      writeJSON(KEY, {
+        theme: settings.theme,
+        mode: settings.mode,
+        shuffle: settings.shuffle,
+        testCount: settings.testCount,
+      })
       applyTheme()
     },
     { deep: true },
