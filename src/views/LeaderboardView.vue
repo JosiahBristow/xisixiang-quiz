@@ -3,6 +3,7 @@ import { computed, onMounted, ref, watch } from 'vue'
 import type { LeaderboardRow } from '../types'
 import { bank, chapterById } from '../lib/bank'
 import { hasSupabase, supabase } from '../lib/supabase'
+import { sync } from '../lib/sync'
 import { auth } from '../stores/auth'
 import { ui } from '../stores/ui'
 
@@ -66,6 +67,11 @@ async function load() {
 }
 
 watch([tab, chapterId], load)
+
+// 登录状态或云同步完成时刷新，我的名次立即生效
+watch([() => auth.user?.id, () => sync.lastAt], () => {
+  if (hasSupabase) void load()
+})
 
 onMounted(load)
 </script>

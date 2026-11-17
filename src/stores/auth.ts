@@ -49,6 +49,8 @@ async function applyUser(user: User | null): Promise<void> {
   if (!user) {
     auth.nickname = ''
   } else {
+    // 先用邮箱前缀占位，避免头像区域短暂空白；随后以云端的昵称为准
+    auth.nickname = (user.email ?? '').split('@')[0] || '同学'
     auth.nickname = await ensureProfile(user)
   }
   window.dispatchEvent(new Event('qz:auth-changed'))
