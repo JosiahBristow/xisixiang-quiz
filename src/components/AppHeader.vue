@@ -97,6 +97,7 @@ async function logout() {
   top: 0;
   z-index: 40;
   border-bottom: 1px solid color-mix(in srgb, var(--line) 78%, transparent);
+  background: var(--bg);
   background: color-mix(in srgb, var(--bg) 82%, transparent);
   backdrop-filter: blur(14px) saturate(1.1);
   -webkit-backdrop-filter: blur(14px) saturate(1.1);

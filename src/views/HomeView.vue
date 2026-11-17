@@ -167,6 +167,7 @@ function scrollToChapters() {
   grid-template-columns: minmax(0, 1.35fr) minmax(0, 0.65fr);
   gap: 36px;
   padding: 44px 48px;
+  background: var(--surface);
   background: linear-gradient(155deg, var(--surface), color-mix(in srgb, var(--surface) 86%, var(--accent-soft)));
   position: relative;
   overflow: hidden;

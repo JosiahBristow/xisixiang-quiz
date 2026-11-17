@@ -2,6 +2,9 @@
 
 习近平新时代中国特色社会主义思想题库的在线刷题站：按章练习、背题模式、错题本、四套主题、云端同步与排行榜。
 
+**线上地址**：https://josiahbristow.github.io/xisixiang-quiz/  ·
+**仓库**：https://github.com/JosiahBristow/xisixiang-quiz
+
 - **485 道题 / 18 个章节**（单选 249、多选 236），由根目录 Word 题库自动解析生成
 - 纯静态站点（Vue 3 + Vite），可直接部署到 GitHub Pages
 - Supabase 提供邮箱登录、作答记录云同步与总榜 / 章节榜 / 周榜
