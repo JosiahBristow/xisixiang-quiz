@@ -48,6 +48,7 @@ async function logout() {
 
       <nav class="nav">
         <router-link to="/" :class="{ on: onQuiz }">题库</router-link>
+        <router-link to="/test" :class="{ on: route.name === 'test' }">随机测试</router-link>
         <router-link to="/leaderboard" :class="{ on: route.name === 'leaderboard' }">排行榜</router-link>
       </nav>
 
@@ -297,12 +298,9 @@ async function logout() {
     gap: 8px;
   }
 
-  .brand-text small {
+  /* 移动端只保留印章，给三段导航腾出空间 */
+  .brand-text {
     display: none;
-  }
-
-  .brand-text strong {
-    font-size: 15px;
   }
 
   .seal {
@@ -312,12 +310,12 @@ async function logout() {
   }
 
   .nav {
-    margin-left: 0;
+    margin-left: 2px;
     gap: 0;
   }
 
   .nav a {
-    padding: 6px 9px;
+    padding: 6px 10px;
     font-size: 13px;
   }
 
@@ -336,6 +334,34 @@ async function logout() {
 
   .avatar-btn {
     padding: 3px;
+  }
+}
+
+@media (max-width: 360px) {
+  .head-inner {
+    gap: 6px;
+  }
+
+  .seal {
+    width: 30px;
+    height: 30px;
+    font-size: 17px;
+  }
+
+  .nav a {
+    padding: 5px 7px;
+    font-size: 12px;
+  }
+
+  .icon-btn {
+    width: 32px;
+    height: 32px;
+  }
+
+  .head-right .btn-sm {
+    height: 32px;
+    padding: 0 10px;
+    font-size: 12.5px;
   }
 }
 </style>
