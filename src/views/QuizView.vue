@@ -196,7 +196,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M19 12H5m0 0 6-6m-6 6 6 6" />
           </svg>
-          题库
+          <span class="qh-back-text">题库</span>
         </button>
         <div class="qh-title">
           <b>{{ title }}</b>
@@ -838,6 +838,10 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
   .qh-back {
     width: 34px;
     padding: 0;
+  }
+
+  .qh-back-text {
+    display: none;
   }
 
   .qh-back svg {

@@ -29,7 +29,8 @@ function toAttempt(row: RemoteAttempt): Attempt {
     questionId: row.question_id,
     chapter: row.chapter,
     correct: row.correct,
-    at: row.attempted_at,
+    // 统一成本地 ISO 格式，避免与本地时间字符串比较时格式不一致
+    at: new Date(row.attempted_at).toISOString(),
     synced: true,
   }
 }

@@ -35,7 +35,7 @@ export const latestByQuestion = computed(() => {
   const map = new Map<string, Attempt>()
   for (const a of attempts) {
     const prev = map.get(a.questionId)
-    if (!prev || a.at >= prev.at) map.set(a.questionId, a)
+    if (!prev || Date.parse(a.at) >= Date.parse(prev.at)) map.set(a.questionId, a)
   }
   return map
 })
