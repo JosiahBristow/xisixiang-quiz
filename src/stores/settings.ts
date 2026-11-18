@@ -8,7 +8,7 @@ export const settings = reactive<Settings>({
   theme: 'auto',
   mode: 'practice',
   shuffle: true,
-  skipCorrect: false,
+  skipCorrect: true,
   testCount: 20,
 })
 
