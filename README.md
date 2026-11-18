@@ -12,6 +12,7 @@
 - **自定义头像**：上传后自动居中裁剪压缩到 256×256，显示在导航、排行榜、PK 与个人中心
 - **积分商城**：可用积分解锁 3 套主题与 3 枚荣誉徽章，徽章可佩戴展示在排行榜
 - **跳过已答对**：默认开启，练习与随机测试只刷还没做对的题，避免重复劳动
+- **留言板**：登录可发帖 / 回复 / 点赞，管理员可置顶、隐藏、删除
 - 纯静态站点（Vue 3 + Vite），可直接部署到 GitHub Pages
 - Supabase 提供邮箱登录、作答记录云同步与总榜 / 章节榜 / 周榜
 - 深色、浅色、护眼、墨蓝四套主题，手机 / 电脑自适应
@@ -48,7 +49,8 @@ npm run preview
    [`supabase/migrations/0005_total_score.sql`](supabase/migrations/0005_total_score.sql)、
    [`supabase/migrations/0006_avatars.sql`](supabase/migrations/0006_avatars.sql)、
    [`supabase/migrations/0007_rewards.sql`](supabase/migrations/0007_rewards.sql)、
-   [`supabase/migrations/0008_points_balance.sql`](supabase/migrations/0008_points_balance.sql)
+   [`supabase/migrations/0008_points_balance.sql`](supabase/migrations/0008_points_balance.sql)、
+   [`supabase/migrations/0009_board.sql`](supabase/migrations/0009_board.sql)
    （脚本幂等，可重复执行）。0001 会创建：
    - `profiles`：昵称（注册时自动生成）
    - `attempts`：逐题作答记录（进度 / 错题本 / 排行榜的数据源）
@@ -70,6 +72,9 @@ npm run preview
    以及批量返回头像与佩戴徽章的 `lb_social` 函数。
 
    0008 将 `lb_points` 改为按积分余额排名（累计获得 − 商城消费）。
+
+   0009 创建留言板：`messages` / `message_likes` 表、发帖与点赞 RPC（含 300 字与
+   30 秒频率校验）、管理员邮箱判定函数 `is_admin`（默认 `josiah_bristow@outlook.com`）。
 3. 进入 **Authentication → Providers → Email**，关闭 **Confirm email**
    （自己人使用，注册后可立即登录；开着的话需要先点邮件里的确认链接）。
 4. 进入 **Project Settings → API**，复制 **Project URL** 和 **anon public key**，写入项目根目录 `.env`：
@@ -150,7 +155,16 @@ git push -u origin main
   荣誉徽章（青玉 / 流金 / 丹凤）可分别解锁；徽章穿戴后显示在排行榜与个人中心。
   消费会从积分余额中扣除，并同步影响积分榜排名；等级仍按累计获得计算。
 
-## 六、排行榜规则
+## 六、留言板
+
+- 入口：导航栏「留言板」或 `/#/board`；游客可浏览，登录后可发帖、回复、点赞。
+- 发帖：话题（讨论 / 吐槽 / 求助 / 建议），每条最多 300 字，同一账号 30 秒内只能发一条。
+- 互动：一层楼中楼回复，支持点赞并按「最新 / 最热」排序，置顶内容始终靠前。
+- 权限：作者可删除自己的留言；管理员可置顶、隐藏、删除任意留言。
+- 管理员：默认邮箱 `josiah_bristow@outlook.com`，判定逻辑在 `public.is_admin()`，换人改这一处即可。
+- 留言永久保留，隐藏内容仅管理员可见。
+
+## 七、排行榜规则
 
 | 榜单 | 统计口径 |
 | --- | --- |
@@ -167,14 +181,14 @@ git push -u origin main
 
 ---
 
-## 七、项目结构
+## 八、项目结构
 
 ```
 习思想题库更新版/          Word 题库（数据源，构建时解析）
 scripts/parse-bank.mjs      docx → JSON 解析与校验
 src/
   data/questions.json      解析产物（自动生成，可提交）
-  views/                   首页 / 刷题页 / 随机测试 / 联机对战 / 排行榜 / 我的成就
+  views/                   首页 / 刷题页 / 随机测试 / 联机对战 / 排行榜 / 我的成就 / 留言板
   components/              头部、主题切换、登录弹窗
   stores/                  设置、进度（localStorage）、认证
   lib/                     Supabase 客户端、云同步、题库查询

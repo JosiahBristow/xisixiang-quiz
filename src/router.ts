@@ -4,6 +4,7 @@ import QuizView from './views/QuizView.vue'
 import TestView from './views/TestView.vue'
 import PkView from './views/PkView.vue'
 import MeView from './views/MeView.vue'
+import BoardView from './views/BoardView.vue'
 import LeaderboardView from './views/LeaderboardView.vue'
 
 // GitHub Pages 无法做服务端重写，统一使用 hash 路由，任何仓库子路径下都能直接刷新
@@ -15,6 +16,7 @@ const router = createRouter({
     { path: '/test', name: 'test', component: TestView, meta: { title: '随机测试' } },
     { path: '/pk', name: 'pk', component: PkView, meta: { title: '联机对战' } },
     { path: '/me', name: 'me', component: MeView, meta: { title: '我的成就' } },
+    { path: '/board', name: 'board', component: BoardView, meta: { title: '留言板' } },
     { path: '/leaderboard', name: 'leaderboard', component: LeaderboardView, meta: { title: '排行榜' } },
     { path: '/:pathMatch(.*)*', redirect: '/' },
   ],
