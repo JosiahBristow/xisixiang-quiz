@@ -3,6 +3,7 @@ import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import ThemeSwitcher from './ThemeSwitcher.vue'
 import MarqueeText from './MarqueeText.vue'
+import UserAvatar from './UserAvatar.vue'
 import { auth, signOut } from '../stores/auth'
 import { ui } from '../stores/ui'
 import { hasSupabase } from '../lib/supabase'
@@ -63,7 +64,7 @@ async function logout() {
         <ThemeSwitcher />
         <div v-if="hasSupabase" ref="userRef" class="user">
           <button v-if="auth.user" class="avatar-btn" aria-label="账号菜单" @click="menuOpen = !menuOpen">
-            <span class="avatar">{{ auth.nickname.slice(0, 1) || '我' }}</span>
+            <UserAvatar :src="auth.avatarUrl" :name="auth.nickname" :size="28" />
             <span class="uname">{{ auth.nickname }}</span>
           </button>
           <button v-else class="btn btn-soft btn-sm" @click="openAuth">登录</button>
@@ -71,7 +72,7 @@ async function logout() {
           <transition name="fade">
             <div v-if="menuOpen && auth.user" class="popover user-menu">
               <div class="um-head">
-                <span class="avatar lg">{{ auth.nickname.slice(0, 1) }}</span>
+                <UserAvatar :src="auth.avatarUrl" :name="auth.nickname" :size="40" />
                 <div class="um-id">
                   <MarqueeText :text="auth.nickname" class="um-name" />
                   <small>{{ auth.user.email }}</small>

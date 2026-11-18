@@ -7,11 +7,13 @@ import {
   signOut,
   signUp,
   updateNickname,
+  uploadAvatar,
 } from '../stores/auth'
 import { attempts, resetLocalProgress } from '../stores/progress'
 import { fullSync, sync } from '../lib/sync'
 import { hasSupabase } from '../lib/supabase'
 import MarqueeText from './MarqueeText.vue'
+import UserAvatar from './UserAvatar.vue'
 
 const emit = defineEmits<{ (e: 'close'): void }>()
 
@@ -23,6 +25,9 @@ const password = ref('')
 const nickname = ref('')
 const busy = ref(false)
 const saved = ref(false)
+const avatarInput = ref<HTMLInputElement | null>(null)
+const avatarMsg = ref('')
+const avatarErr = ref(false)
 
 const isProfile = computed(() => Boolean(auth.user))
 const title = computed(() => (isProfile.value ? '账号与同步' : tab.value === 'login' ? '登录' : '注册'))
@@ -90,6 +95,22 @@ async function doSync() {
   await fullSync()
 }
 
+async function onAvatarChange(e: Event) {
+  const input = e.target as HTMLInputElement
+  const file = input.files?.[0]
+  input.value = ''
+  if (!file) return
+  avatarMsg.value = ''
+  avatarErr.value = false
+  try {
+    await uploadAvatar(file)
+    avatarMsg.value = '头像已更新'
+  } catch (err) {
+    avatarErr.value = true
+    avatarMsg.value = err instanceof Error ? err.message : '头像上传失败，请重试'
+  }
+}
+
 function confirmReset() {
   if (confirm('确定清空本机的刷题记录吗？云端记录不会被删除。')) resetLocalProgress()
 }
@@ -138,12 +159,21 @@ onBeforeUnmount(() => {
 
       <template v-else-if="isProfile">
         <div class="profile">
-          <span class="avatar-xl">{{ auth.nickname.slice(0, 1) || '我' }}</span>
+          <div class="avatar-block">
+            <UserAvatar :src="auth.avatarUrl" :name="auth.nickname" :size="54" />
+            <button class="avatar-upload" :disabled="auth.avatarLoading" @click="avatarInput?.click()">
+              {{ auth.avatarLoading ? '处理中…' : '换头像' }}
+            </button>
+            <input ref="avatarInput" type="file" accept="image/*" hidden @change="onAvatarChange" />
+          </div>
           <div class="p-id">
             <MarqueeText :text="auth.nickname" class="p-name" />
             <small>{{ auth.user?.email }}</small>
           </div>
         </div>
+
+        <small v-if="avatarMsg" class="avatar-msg" :class="{ err: avatarErr }">{{ avatarMsg }}</small>
+        <p class="avatar-hint">支持 JPG / PNG，大图会自动压缩到 256×256</p>
 
         <div class="field">
           <label for="nick">昵称（显示在排行榜）</label>
@@ -335,17 +365,47 @@ onBeforeUnmount(() => {
   border-bottom: 1px solid var(--line);
 }
 
-.avatar-xl {
-  display: grid;
-  place-items: center;
-  width: 52px;
-  height: 52px;
-  border-radius: 50%;
-  background: var(--accent-soft);
-  color: var(--accent);
-  font-size: 22px;
-  font-weight: 700;
+.avatar-block {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
   flex-shrink: 0;
+}
+
+.avatar-upload {
+  padding: 2px 7px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--accent);
+  transition: background-color 0.15s;
+}
+
+.avatar-upload:hover:not(:disabled) {
+  background: var(--accent-soft);
+}
+
+.avatar-upload:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.avatar-msg {
+  display: block;
+  margin-top: 8px;
+  font-size: 12px;
+  color: var(--ok);
+}
+
+.avatar-msg.err {
+  color: var(--bad);
+}
+
+.avatar-hint {
+  margin-top: 4px;
+  font-size: 10.5px;
+  color: var(--muted);
 }
 
 .p-id {

@@ -7,6 +7,8 @@ import { sync } from '../lib/sync'
 import { auth } from '../stores/auth'
 import { ui } from '../stores/ui'
 import MarqueeText from '../components/MarqueeText.vue'
+import UserAvatar from '../components/UserAvatar.vue'
+import { avatarCache, ensureAvatars } from '../stores/avatars'
 
 interface PkRow {
   rank: number
@@ -78,6 +80,7 @@ async function load() {
       }))
       rows.value = []
       pkRows.value = []
+      void ensureAvatars(pointsRows.value.map((r) => r.user_id))
       return
     }
 
@@ -97,6 +100,7 @@ async function load() {
       }))
       rows.value = []
       pointsRows.value = []
+      void ensureAvatars(pkRows.value.map((r) => r.user_id))
       return
     }
 
@@ -129,6 +133,7 @@ async function load() {
       wins: Number(r.wins ?? 0),
       is_me: Boolean(r.is_me),
     }))
+    void ensureAvatars(rows.value.map((r) => r.user_id))
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e)
     error.value = /could not find the function|does not exist/i.test(msg)
@@ -219,7 +224,7 @@ onMounted(load)
               <li v-for="row in pkRows" :key="row.user_id" class="row" :class="{ me: row.is_me }">
                 <span class="rank" :class="row.rank <= 3 ? 'r' + row.rank : ''">{{ row.rank }}</span>
                 <span class="user">
-                  <span class="av">{{ row.nickname.slice(0, 1) }}</span>
+                  <UserAvatar :src="avatarCache[row.user_id]" :name="row.nickname" :size="27" />
                   <MarqueeText :text="row.nickname" class="user-name" />
                   <span v-if="row.is_me" class="me-tag">我</span>
                   <span v-if="row.streak >= 2" class="streak-tag">{{ row.streak }} 连胜</span>
@@ -241,7 +246,7 @@ onMounted(load)
               <li v-for="row in pointsRows" :key="row.user_id" class="row" :class="{ me: row.is_me }">
                 <span class="rank" :class="row.rank <= 3 ? 'r' + row.rank : ''">{{ row.rank }}</span>
                 <span class="user">
-                  <span class="av">{{ row.nickname.slice(0, 1) }}</span>
+                  <UserAvatar :src="avatarCache[row.user_id]" :name="row.nickname" :size="27" />
                   <MarqueeText :text="row.nickname" class="user-name" />
                   <span v-if="row.is_me" class="me-tag">我</span>
                 </span>
@@ -260,7 +265,7 @@ onMounted(load)
               <li v-for="row in rows" :key="row.user_id" class="row total-row" :class="{ me: row.is_me }">
                 <span class="rank" :class="row.rank <= 3 ? 'r' + row.rank : ''">{{ row.rank }}</span>
                 <span class="user">
-                  <span class="av">{{ row.nickname.slice(0, 1) }}</span>
+                  <UserAvatar :src="avatarCache[row.user_id]" :name="row.nickname" :size="27" />
                   <span class="u-body">
                     <span class="u-line">
                       <MarqueeText :text="row.nickname" class="user-name" />
@@ -286,7 +291,7 @@ onMounted(load)
               <li v-for="row in rows" :key="row.user_id" class="row" :class="{ me: row.is_me }">
                 <span class="rank" :class="row.rank <= 3 ? 'r' + row.rank : ''">{{ row.rank }}</span>
                 <span class="user">
-                  <span class="av">{{ row.nickname.slice(0, 1) }}</span>
+                  <UserAvatar :src="avatarCache[row.user_id]" :name="row.nickname" :size="27" />
                   <MarqueeText :text="row.nickname" class="user-name" />
                   <span v-if="row.is_me" class="me-tag">我</span>
                 </span>

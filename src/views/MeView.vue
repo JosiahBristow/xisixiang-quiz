@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { BADGES, addDays, dayKeyOf, todayKey } from '../lib/incentives'
+import UserAvatar from '../components/UserAvatar.vue'
 import { attempts } from '../stores/progress'
 import { auth } from '../stores/auth'
 import { ui } from '../stores/ui'
@@ -49,7 +50,7 @@ const statTiles = computed(() => [
   <main class="me">
     <div class="wrap me-wrap">
       <section class="me-head card">
-        <div class="me-avatar serif">{{ auth.nickname?.slice(0, 1) || '我' }}</div>
+        <UserAvatar :src="auth.avatarUrl" :name="auth.nickname || '我'" :size="64" />
         <div class="me-id">
           <div class="me-name-row">
             <h1 class="serif">{{ auth.user ? auth.nickname : '游客' }}</h1>

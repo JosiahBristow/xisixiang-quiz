@@ -1,12 +1,16 @@
 import { reactive } from 'vue'
 import type { User } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
+import { compressAvatar } from '../lib/image'
+import { avatarCache } from './avatars'
 
 export const auth = reactive({
   ready: false,
   user: null as User | null,
   nickname: '',
+  avatarUrl: '',
   loading: false,
+  avatarLoading: false,
   error: '',
   notice: '',
 })
@@ -25,33 +29,39 @@ function translateError(message: string): string {
   return message
 }
 
-async function ensureProfile(user: User): Promise<string> {
-  if (!supabase) return ''
+async function ensureProfile(user: User): Promise<{ nickname: string; avatarUrl: string }> {
+  if (!supabase) return { nickname: '', avatarUrl: '' }
   const { data } = await supabase
     .from('profiles')
-    .select('nickname')
+    .select('nickname, avatar_url')
     .eq('id', user.id)
     .maybeSingle()
-  if (data?.nickname) return data.nickname
+  if (data?.nickname) {
+    return { nickname: data.nickname, avatarUrl: (data as { avatar_url?: string | null }).avatar_url ?? '' }
+  }
 
   const base = (user.email ?? '同学').split('@')[0].slice(0, 12) || '同学'
   for (let i = 0; i < 6; i++) {
     const nickname = i === 0 ? base : `${base}${Math.floor(Math.random() * 900 + 100)}`
     const { error } = await supabase.from('profiles').insert({ id: user.id, nickname })
-    if (!error) return nickname
+    if (!error) return { nickname, avatarUrl: '' }
     if ((error as { code?: string }).code !== '23505') break
   }
-  return base
+  return { nickname: base, avatarUrl: '' }
 }
 
 async function applyUser(user: User | null): Promise<void> {
   auth.user = user
   if (!user) {
     auth.nickname = ''
+    auth.avatarUrl = ''
   } else {
     // 先用邮箱前缀占位，避免头像区域短暂空白；随后以云端的昵称为准
     auth.nickname = (user.email ?? '').split('@')[0] || '同学'
-    auth.nickname = await ensureProfile(user)
+    const profile = await ensureProfile(user)
+    auth.nickname = profile.nickname
+    auth.avatarUrl = profile.avatarUrl
+    avatarCache[user.id] = profile.avatarUrl
   }
   window.dispatchEvent(new Event('qz:auth-changed'))
 }
@@ -108,6 +118,35 @@ export async function signOut(): Promise<void> {
   await supabase.auth.signOut()
   auth.user = null
   auth.nickname = ''
+  auth.avatarUrl = ''
+}
+
+export async function uploadAvatar(file: File): Promise<void> {
+  if (!supabase || !auth.user) throw new Error('请先登录')
+  auth.avatarLoading = true
+  try {
+    const blob = await compressAvatar(file)
+    const path = `${auth.user.id}/avatar.jpg`
+    const { error } = await supabase.storage.from('avatars').upload(path, blob, {
+      upsert: true,
+      contentType: 'image/jpeg',
+      cacheControl: '3600',
+    })
+    if (error) throw new Error('上传失败，请稍后再试')
+
+    const { data } = supabase.storage.from('avatars').getPublicUrl(path)
+    const url = `${data.publicUrl}?v=${Date.now()}`
+    const { error: saveError } = await supabase
+      .from('profiles')
+      .update({ avatar_url: url })
+      .eq('id', auth.user.id)
+    if (saveError) throw new Error('头像保存失败，请稍后再试')
+
+    auth.avatarUrl = url
+    avatarCache[auth.user.id] = url
+  } finally {
+    auth.avatarLoading = false
+  }
 }
 
 export async function updateNickname(nick: string): Promise<boolean> {

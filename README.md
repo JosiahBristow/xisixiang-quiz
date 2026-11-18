@@ -9,6 +9,7 @@
 - **随机测试**：自选抽题数量，答题时答案全部隐藏，交卷后统一公布并逐题回顾
 - **联机对战**：房间码 / 快速匹配实时 PK，正确+速度计分，胜负计入 PK 榜
 - **积分与成就**：答对 +10、PK 获胜 +80、活跃日 +20；12 枚徽章、等级称号、连击提示
+- **自定义头像**：上传后自动居中裁剪压缩到 256×256，显示在导航、排行榜、PK 与个人中心
 - 纯静态站点（Vue 3 + Vite），可直接部署到 GitHub Pages
 - Supabase 提供邮箱登录、作答记录云同步与总榜 / 章节榜 / 周榜
 - 深色、浅色、护眼、墨蓝四套主题，手机 / 电脑自适应
@@ -42,7 +43,8 @@ npm run preview
 2. 打开 **SQL Editor**，依次执行 [`supabase/migrations/0001_init.sql`](supabase/migrations/0001_init.sql)、
    [`supabase/migrations/0002_pk.sql`](supabase/migrations/0002_pk.sql)、
    [`supabase/migrations/0004_incentives.sql`](supabase/migrations/0004_incentives.sql)、
-   [`supabase/migrations/0005_total_score.sql`](supabase/migrations/0005_total_score.sql)
+   [`supabase/migrations/0005_total_score.sql`](supabase/migrations/0005_total_score.sql)、
+   [`supabase/migrations/0006_avatars.sql`](supabase/migrations/0006_avatars.sql)
    （脚本幂等，可重复执行）。0001 会创建：
    - `profiles`：昵称（注册时自动生成）
    - `attempts`：逐题作答记录（进度 / 错题本 / 排行榜的数据源）
@@ -55,6 +57,9 @@ npm run preview
    0004 只新增 `lb_points` 积分榜函数；积分与成就本身由作答记录实时推导，不占用新表。
 
    0005 重写 `lb_total`，总榜改为综合分：答对×10 + 正确率×3 + 最长连对×5 + 活跃天×10 + PK胜×25。
+
+   0006 为 `profiles` 增加头像地址，创建公开的 `avatars` 存储桶（2MB 限制）、
+   按用户目录隔离的存储策略，以及供排行榜/联机查询头像的 `lb_avatars` 函数。
 3. 进入 **Authentication → Providers → Email**，关闭 **Confirm email**
    （自己人使用，注册后可立即登录；开着的话需要先点邮件里的确认链接）。
 4. 进入 **Project Settings → API**，复制 **Project URL** 和 **anon public key**，写入项目根目录 `.env`：

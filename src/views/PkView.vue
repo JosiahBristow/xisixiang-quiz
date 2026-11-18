@@ -10,6 +10,8 @@ import { auth } from '../stores/auth'
 import { ui } from '../stores/ui'
 import { refreshPkStats } from '../stores/pkStats'
 import MarqueeText from '../components/MarqueeText.vue'
+import UserAvatar from '../components/UserAvatar.vue'
+import { avatarCache, ensureAvatars } from '../stores/avatars'
 
 const route = useRoute()
 
@@ -73,6 +75,10 @@ let autoJoined = false
 const isHost = computed(() => Boolean(room.value && auth.user && room.value.host_id === auth.user.id))
 const limitMs = computed(() => (room.value?.prefs.limit ?? 15) * 1000)
 const current = computed<Question | undefined>(() => questions.value[qIndex.value])
+const opponentUserId = computed(() => {
+  if (!room.value || !auth.user) return null
+  return room.value.host_id === auth.user.id ? room.value.guest_id : room.value.host_id
+})
 const opponentName = computed(() => {
   if (!room.value || !auth.user) return '对手'
   return room.value.host_id === auth.user.id
@@ -207,6 +213,7 @@ function enterRoom(data: PkRoom) {
   room.value = data
   phase.value = 'waiting'
   stage.value = 'room'
+  void ensureAvatars([data.host_id, data.guest_id])
   subscribeRoom()
   startRoomPoll()
 }
@@ -357,6 +364,7 @@ function onPresence() {
   if (hasOpponent) lastSeen = Date.now()
 
   if (otherId) {
+    void ensureAvatars([otherId])
     const meta = state[otherId]?.[0]
     if (meta?.nickname) {
       if (r.host_id === u.id) r.guest_nickname = meta.nickname
@@ -783,13 +791,13 @@ onBeforeUnmount(() => {
 
           <div class="wait-players">
             <div class="wp-player">
-              <span class="avatar lg">{{ auth.nickname.slice(0, 1) }}</span>
+              <UserAvatar :src="auth.avatarUrl" :name="auth.nickname" :size="48" />
               <MarqueeText :text="auth.nickname" class="wp-name" />
               <small>{{ isHost ? '房主 · 你' : '客人 · 你' }}</small>
             </div>
             <span class="wp-vs serif">VS</span>
             <div class="wp-player" :class="{ empty: !opponentOnline }">
-              <span class="avatar lg">{{ opponentOnline ? opponentName.slice(0, 1) : '?' }}</span>
+              <UserAvatar :src="avatarCache[opponentUserId ?? '']" :name="opponentOnline ? opponentName : '?'" :size="48" />
               <MarqueeText :text="opponentOnline ? opponentName : '等待对手'" class="wp-name" />
               <small>{{ opponentOnline ? '已就位' : '把房间码发给好友' }}</small>
             </div>
@@ -816,7 +824,7 @@ onBeforeUnmount(() => {
         <section v-else-if="phase === 'question' || phase === 'reveal'" class="match">
           <div class="score-bar card">
             <div class="sb-side">
-              <span class="avatar">{{ auth.nickname.slice(0, 1) }}</span>
+              <UserAvatar :src="auth.avatarUrl" :name="auth.nickname" :size="28" />
               <div class="sb-id">
                 <MarqueeText :text="auth.nickname" class="sb-name" />
                 <small>你</small>
@@ -830,7 +838,7 @@ onBeforeUnmount(() => {
                 <MarqueeText :text="opponentName" class="sb-name" />
                 <small>{{ opponentOnline ? '对手' : '已掉线' }}</small>
               </div>
-              <span class="avatar">{{ opponentName.slice(0, 1) }}</span>
+              <UserAvatar :src="avatarCache[opponentUserId ?? '']" :name="opponentName" :size="28" />
             </div>
           </div>
 
