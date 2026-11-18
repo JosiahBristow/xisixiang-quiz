@@ -7,7 +7,7 @@ import UserAvatar from '../components/UserAvatar.vue'
 import RewardBadge from '../components/RewardBadge.vue'
 import { attempts } from '../stores/progress'
 import { auth } from '../stores/auth'
-import { availablePoints, equipBadge, isOwned, purchaseReward } from '../stores/rewards'
+import { balancePoints, equipBadge, isOwned, purchaseReward } from '../stores/rewards'
 import { setTheme, settings } from '../stores/settings'
 import { ui } from '../stores/ui'
 import { pkStats } from '../stores/pkStats'
@@ -45,7 +45,7 @@ async function handleTheme(item: RewardItem) {
   if (!requireLogin()) return
   shopMsg.value = ''
   if (!isOwned(item.id)) {
-    const short = item.cost - availablePoints.value
+    const short = item.cost - balancePoints.value
     if (short > 0) {
       shopMsg.value = `积分不足，还差 ${short} 分`
       return
@@ -65,7 +65,7 @@ async function handleBadge(item: RewardItem) {
   if (!requireLogin()) return
   shopMsg.value = ''
   if (!isOwned(item.id)) {
-    const short = item.cost - availablePoints.value
+    const short = item.cost - balancePoints.value
     if (short > 0) {
       shopMsg.value = `积分不足，还差 ${short} 分`
       return
@@ -124,12 +124,12 @@ const statTiles = computed(() => [
             <RewardBadge v-if="auth.equippedBadge" :item-id="auth.equippedBadge" :size="20" />
           </div>
           <p class="me-sub">
-            可用 {{ availablePoints }} 积分 · 累计 {{ stats.points }} · 已答对 {{ stats.correct }} 题 · 解锁
+            积分 {{ balancePoints }} · 累计获得 {{ stats.points }} · 已答对 {{ stats.correct }} 题 · 解锁
             {{ unlockedCount }}/{{ BADGES.length }} 成就
           </p>
           <div class="level-track"><i :style="{ width: stats.levelPercent + '%' }" /></div>
           <small class="level-hint">
-            {{ nextLevel ? `距离「${nextLevel.name}」还差 ${nextLevel.min - stats.points} 分` : '已达到最高等级' }}
+            {{ nextLevel ? `距离「${nextLevel.name}」还差 ${nextLevel.min - stats.points} 分（按累计获得）` : '已达到最高等级' }}
           </small>
         </div>
         <div class="me-actions">
@@ -180,9 +180,9 @@ const statTiles = computed(() => [
         <header class="sec-head">
           <div>
             <h2 class="serif">积分商城</h2>
-            <p>用可用积分解锁主题与荣誉徽章；消费不影响积分榜（按累计积分排名）</p>
+            <p>消费会从积分余额中扣除，并同步影响积分榜排名</p>
           </div>
-          <span class="badge badge-accent">{{ availablePoints }} 可用积分</span>
+          <span class="badge badge-accent">{{ balancePoints }} 积分</span>
         </header>
 
         <p v-if="shopMsg" class="shop-msg">{{ shopMsg }}</p>
@@ -254,7 +254,7 @@ const statTiles = computed(() => [
       </section>
 
       <p class="rules-note">
-        积分规则：答对一题 +10（每题只计一次）· PK 获胜 +80 · 活跃一天 +20。
+        积分规则：答对一题 +10（每题只计一次）· PK 获胜 +80 · 活跃一天 +20；商城消费从余额扣除。
       </p>
     </div>
   </main>

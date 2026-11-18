@@ -5,6 +5,7 @@ import { bank } from '../lib/bank'
 import { BADGES } from '../lib/incentives'
 import { chapterStats, overall, wrongQuestions } from '../stores/progress'
 import { stats as inc, unlockedCount } from '../stores/incentives'
+import { balancePoints } from '../stores/rewards'
 import { settings } from '../stores/settings'
 import { hasSupabase } from '../lib/supabase'
 
@@ -112,7 +113,7 @@ function scrollToChapters() {
         <div class="td-main">
           <div class="td-head">
             <span class="badge badge-accent">{{ inc.level.name }}</span>
-            <b class="serif">{{ inc.points }}<small>积分</small></b>
+            <b class="serif">{{ balancePoints }}<small>积分</small></b>
           </div>
           <div class="td-stats">
             <div class="td-stat"><b class="serif">{{ inc.todayCount }}</b><span>今日答题</span></div>

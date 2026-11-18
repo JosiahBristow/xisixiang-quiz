@@ -4,7 +4,7 @@ import type { RewardItem } from '../lib/rewards'
 import { THEME_REWARDS } from '../lib/rewards'
 import type { ThemeId } from '../types'
 import { auth } from '../stores/auth'
-import { availablePoints, isOwned, purchaseReward } from '../stores/rewards'
+import { balancePoints, isOwned, purchaseReward } from '../stores/rewards'
 import { isDarkTheme, setTheme, settings } from '../stores/settings'
 import { ui } from '../stores/ui'
 
@@ -50,7 +50,7 @@ async function pick(t: ThemeOption) {
       ui.authOpen = true
       return
     }
-    const short = t.reward.cost - availablePoints.value
+    const short = t.reward.cost - balancePoints.value
     if (short > 0) {
       themeMsg.value = `积分不足，还差 ${short} 分`
       return
@@ -142,7 +142,7 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', onDocPointer))
         <p v-if="themeMsg" class="theme-msg">{{ themeMsg }}</p>
 
         <router-link to="/me" class="theme-shop" @click="open = false">
-          <span>可用 {{ availablePoints }} 积分</span>
+          <span>余额 {{ balancePoints }} 积分</span>
           <span>去商城 →</span>
         </router-link>
       </div>

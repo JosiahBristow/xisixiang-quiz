@@ -42,7 +42,7 @@ const tabs: { id: TabId; label: string; hint: string }[] = [
   { id: 'chapter', label: '章节榜', hint: '该章刷过一半以上才能入榜，按正确率排名' },
   { id: 'week', label: '周榜', hint: '每周一 0 点（北京时间）重新开始，统计本周答题数' },
   { id: 'pk', label: 'PK 榜', hint: '按联机 PK 胜场排名，同胜场看胜率' },
-  { id: 'points', label: '积分榜', hint: '答对一题 +10 · PK 获胜 +80 · 活跃一天 +20' },
+  { id: 'points', label: '积分榜', hint: '答对 +10 · PK 胜 +80 · 活跃 +20，扣除商城消费后排名' },
 ]
 
 const tab = ref<TabId>('total')
@@ -375,7 +375,7 @@ onMounted(load)
           <li><b>章节榜</b> · 该章刷过一半以上题目才能入榜，按正确率排序</li>
           <li><b>周榜</b> · 每周一 0 点（北京时间）重新统计</li>
           <li><b>PK 榜</b> · 按联机对战胜场排序，同胜场看胜率</li>
-          <li><b>积分榜</b> · 答对一题 +10（每题只计一次）、PK 获胜 +80、活跃一天 +20</li>
+          <li><b>积分榜</b> · 按积分余额排序（答对 +10、PK 胜 +80、活跃 +20，扣除商城消费）</li>
           <li>排名基于登录账号的记录，未登录时只在本机保存进度</li>
         </ul>
       </template>

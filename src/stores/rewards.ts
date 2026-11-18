@@ -11,8 +11,8 @@ export const rewards = reactive({
   loaded: false,
 })
 
-/** 可用积分 = 累计积分 − 已消费 */
-export const availablePoints = computed(() => Math.max(0, points.value - rewards.spent))
+/** 积分余额 = 累计获得 − 商城消费 */
+export const balancePoints = computed(() => Math.max(0, points.value - rewards.spent))
 
 export function isOwned(itemId: string): boolean {
   return rewards.owned.includes(itemId)
@@ -39,8 +39,8 @@ export async function purchaseReward(itemId: string): Promise<{ ok: boolean; msg
   const item = rewardById(itemId)
   if (!item) return { ok: false, msg: '商品不存在' }
   if (isOwned(itemId)) return { ok: true }
-  if (availablePoints.value < item.cost) {
-    return { ok: false, msg: `积分不足，还差 ${item.cost - availablePoints.value} 分` }
+  if (balancePoints.value < item.cost) {
+    return { ok: false, msg: `积分不足，还差 ${item.cost - balancePoints.value} 分` }
   }
 
   const { data, error } = await supabase.rpc('purchase_reward', { p_item: itemId })

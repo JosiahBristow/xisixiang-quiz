@@ -46,7 +46,8 @@ npm run preview
    [`supabase/migrations/0004_incentives.sql`](supabase/migrations/0004_incentives.sql)、
    [`supabase/migrations/0005_total_score.sql`](supabase/migrations/0005_total_score.sql)、
    [`supabase/migrations/0006_avatars.sql`](supabase/migrations/0006_avatars.sql)、
-   [`supabase/migrations/0007_rewards.sql`](supabase/migrations/0007_rewards.sql)
+   [`supabase/migrations/0007_rewards.sql`](supabase/migrations/0007_rewards.sql)、
+   [`supabase/migrations/0008_points_balance.sql`](supabase/migrations/0008_points_balance.sql)
    （脚本幂等，可重复执行）。0001 会创建：
    - `profiles`：昵称（注册时自动生成）
    - `attempts`：逐题作答记录（进度 / 错题本 / 排行榜的数据源）
@@ -66,6 +67,8 @@ npm run preview
    0007 创建积分商城：`reward_items` 商品目录、`user_rewards` 购买记录、
    `purchase_reward` / `equip_reward_badge` RPC（含余额校验与佩戴权限），
    以及批量返回头像与佩戴徽章的 `lb_social` 函数。
+
+   0008 将 `lb_points` 改为按积分余额排名（累计获得 − 商城消费）。
 3. 进入 **Authentication → Providers → Email**，关闭 **Confirm email**
    （自己人使用，注册后可立即登录；开着的话需要先点邮件里的确认链接）。
 4. 进入 **Project Settings → API**，复制 **Project URL** 和 **anon public key**，写入项目根目录 `.env`：
@@ -139,9 +142,9 @@ git push -u origin main
 - **成就**：共 12 枚徽章，覆盖首答、连击、答对题量、单章正确率、连续打卡、全勤周与 PK 胜场；
   达成时全局弹出解锁提示，个人中心可查看徽章墙与最近 7 天答题曲线。
 - 未登录时积分与徽章按本机记录计算；登录后随作答记录自动同步，积分榜只统计登录账号。
-- **积分商城**：可用积分 = 累计积分 − 已消费积分。主题（朱砂 / 青瓷 / 夜航）与
+- **积分商城**：积分余额 = 累计获得 − 商城消费。主题（朱砂 / 青瓷 / 夜航）与
   荣誉徽章（青玉 / 流金 / 丹凤）可分别解锁；徽章穿戴后显示在排行榜与个人中心。
-  消费**不影响积分榜排名**（榜单按累计积分计算）。
+  消费会从积分余额中扣除，并同步影响积分榜排名；等级仍按累计获得计算。
 
 ## 六、排行榜规则
 
@@ -151,7 +154,7 @@ git push -u origin main
 | 章节榜 | 该章刷过一半以上题目才入榜，按正确率排序 |
 | 周榜 | 每周一 0 点（北京时间）重新开始，统计本周答题数 |
 | PK 榜 | 按联机对战胜场排序，同胜场看胜率，额外显示当前连胜 |
-| 积分榜 | 按积分排序，积分 = 答对题数 ×10 + PK 胜场 ×80 + 活跃天数 ×20 |
+| 积分榜 | 按积分余额排序，余额 = 答对×10 + PK胜×80 + 活跃天×20 − 商城消费 |
 
 - 正确率按「每道题最近一次作答」计算，同一道题反复刷不会刷高题数。
 - 榜单对未登录访客可见；登录后能看到「我的名次」。
