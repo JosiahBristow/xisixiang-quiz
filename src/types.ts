@@ -37,7 +37,7 @@ export interface Attempt {
   synced?: boolean
 }
 
-export type ThemeId = 'auto' | 'paper' | 'night' | 'bamboo' | 'ink'
+export type ThemeId = 'auto' | 'paper' | 'night' | 'bamboo' | 'ink' | 'cinnabar' | 'celadon' | 'nocturne'
 export type QuizMode = 'practice' | 'recite'
 
 export interface Settings {

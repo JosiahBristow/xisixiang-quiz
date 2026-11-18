@@ -1,9 +1,14 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { BADGES, addDays, dayKeyOf, todayKey } from '../lib/incentives'
+import type { RewardItem } from '../lib/rewards'
+import { BADGE_REWARDS, THEME_REWARDS } from '../lib/rewards'
 import UserAvatar from '../components/UserAvatar.vue'
+import RewardBadge from '../components/RewardBadge.vue'
 import { attempts } from '../stores/progress'
 import { auth } from '../stores/auth'
+import { availablePoints, equipBadge, isOwned, purchaseReward } from '../stores/rewards'
+import { setTheme, settings } from '../stores/settings'
 import { ui } from '../stores/ui'
 import { pkStats } from '../stores/pkStats'
 import {
@@ -15,6 +20,67 @@ import {
 } from '../stores/incentives'
 
 const isUnlocked = (id: string) => unlockedIds.value.has(id)
+
+const themeItems = THEME_REWARDS
+const badgeItems = BADGE_REWARDS
+const shopMsg = ref('')
+
+function requireLogin(): boolean {
+  if (auth.user) return true
+  ui.authOpen = true
+  return false
+}
+
+function themeAction(item: RewardItem): string {
+  if (!isOwned(item.id)) return '解锁'
+  return settings.theme === item.theme ? '使用中' : '使用'
+}
+
+function badgeAction(item: RewardItem): string {
+  if (!isOwned(item.id)) return '兑换'
+  return auth.equippedBadge === item.id ? '摘下' : '佩戴'
+}
+
+async function handleTheme(item: RewardItem) {
+  if (!requireLogin()) return
+  shopMsg.value = ''
+  if (!isOwned(item.id)) {
+    const short = item.cost - availablePoints.value
+    if (short > 0) {
+      shopMsg.value = `积分不足，还差 ${short} 分`
+      return
+    }
+    if (!window.confirm(`使用 ${item.cost} 积分解锁「${item.name}」主题？`)) return
+    const res = await purchaseReward(item.id)
+    if (!res.ok) {
+      shopMsg.value = res.msg ?? '兑换失败，请稍后再试'
+      return
+    }
+    shopMsg.value = `已解锁「${item.name}」主题`
+  }
+  if (item.theme) setTheme(item.theme)
+}
+
+async function handleBadge(item: RewardItem) {
+  if (!requireLogin()) return
+  shopMsg.value = ''
+  if (!isOwned(item.id)) {
+    const short = item.cost - availablePoints.value
+    if (short > 0) {
+      shopMsg.value = `积分不足，还差 ${short} 分`
+      return
+    }
+    if (!window.confirm(`使用 ${item.cost} 积分解锁「${item.name}」徽章？`)) return
+    const res = await purchaseReward(item.id)
+    if (!res.ok) {
+      shopMsg.value = res.msg ?? '兑换失败，请稍后再试'
+      return
+    }
+    shopMsg.value = `已解锁「${item.name}」并自动佩戴`
+    return
+  }
+  await equipBadge(auth.equippedBadge === item.id ? null : item.id)
+}
 
 const week = computed(() => {
   const counts = new Map<string, number>()
@@ -55,8 +121,12 @@ const statTiles = computed(() => [
           <div class="me-name-row">
             <h1 class="serif">{{ auth.user ? auth.nickname : '游客' }}</h1>
             <span class="badge badge-accent">{{ level.name }}</span>
+            <RewardBadge v-if="auth.equippedBadge" :item-id="auth.equippedBadge" :size="20" />
           </div>
-          <p class="me-sub">{{ stats.points }} 积分 · 已答对 {{ stats.correct }} 题 · 解锁 {{ unlockedCount }}/{{ BADGES.length }} 成就</p>
+          <p class="me-sub">
+            可用 {{ availablePoints }} 积分 · 累计 {{ stats.points }} · 已答对 {{ stats.correct }} 题 · 解锁
+            {{ unlockedCount }}/{{ BADGES.length }} 成就
+          </p>
           <div class="level-track"><i :style="{ width: stats.levelPercent + '%' }" /></div>
           <small class="level-hint">
             {{ nextLevel ? `距离「${nextLevel.name}」还差 ${nextLevel.min - stats.points} 分` : '已达到最高等级' }}
@@ -102,6 +172,65 @@ const statTiles = computed(() => [
             </div>
             <span v-if="isUnlocked(b.id)" class="bc-check" aria-label="已解锁">✓</span>
             <span v-else class="bc-lock">未解锁</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="card shop">
+        <header class="sec-head">
+          <div>
+            <h2 class="serif">积分商城</h2>
+            <p>用可用积分解锁主题与荣誉徽章；消费不影响积分榜（按累计积分排名）</p>
+          </div>
+          <span class="badge badge-accent">{{ availablePoints }} 可用积分</span>
+        </header>
+
+        <p v-if="shopMsg" class="shop-msg">{{ shopMsg }}</p>
+
+        <div class="shop-group">
+          <h3>主题皮肤</h3>
+          <div class="shop-grid">
+            <div v-for="item in themeItems" :key="item.id" class="shop-item">
+              <div class="si-main">
+                <b>{{ item.name }}</b>
+                <small>{{ item.desc }}</small>
+              </div>
+              <span v-if="!isOwned(item.id)" class="si-price">{{ item.cost }} 积分</span>
+              <button
+                class="btn btn-sm"
+                :class="isOwned(item.id) ? 'btn-ghost' : 'btn-primary'"
+                @click="handleTheme(item)"
+              >
+                {{ themeAction(item) }}
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="shop-group">
+          <h3>荣誉徽章</h3>
+          <div class="shop-grid">
+            <div v-for="item in badgeItems" :key="item.id" class="shop-item">
+              <RewardBadge :item-id="item.id" :size="30" />
+              <div class="si-main">
+                <b>{{ item.name }}</b>
+                <small>{{ item.desc }}</small>
+              </div>
+              <span v-if="!isOwned(item.id)" class="si-price">{{ item.cost }} 积分</span>
+              <button
+                class="btn btn-sm"
+                :class="
+                  !isOwned(item.id)
+                    ? 'btn-primary'
+                    : auth.equippedBadge === item.id
+                      ? 'btn-soft'
+                      : 'btn-ghost'
+                "
+                @click="handleBadge(item)"
+              >
+                {{ badgeAction(item) }}
+              </button>
+            </div>
           </div>
         </div>
       </section>
@@ -266,6 +395,7 @@ const statTiles = computed(() => [
 
 /* ---------- 区块 ---------- */
 section.card.badges,
+section.card.shop,
 section.card.week {
   margin-top: 16px;
   padding: 22px 26px 24px;
@@ -413,6 +543,82 @@ section.card.week {
   color: var(--muted);
 }
 
+/* ---------- 积分商城 ---------- */
+.shop-msg {
+  margin: -4px 0 12px;
+  padding: 8px 12px;
+  border-radius: 9px;
+  background: var(--accent-soft);
+  border: 1px solid var(--accent-line);
+  color: var(--accent);
+  font-size: 12px;
+}
+
+.shop-group + .shop-group {
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px dashed var(--line);
+}
+
+.shop-group h3 {
+  margin-bottom: 10px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  color: var(--muted);
+}
+
+.shop-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 8px;
+}
+
+.shop-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 11px;
+  border: 1px solid var(--line);
+  background: var(--surface-2);
+}
+
+.si-main {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  line-height: 1.35;
+}
+
+.si-main b {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.si-main small {
+  font-size: 10.5px;
+  color: var(--muted);
+}
+
+.si-price {
+  flex-shrink: 0;
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--gold);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.shop-item .btn {
+  height: 30px;
+  padding: 0 10px;
+  border-radius: 8px;
+  font-size: 11.5px;
+  flex-shrink: 0;
+}
+
 /* ---------- 近七天 ---------- */
 .bars {
   display: flex;
@@ -525,8 +731,13 @@ section.card.week {
   }
 
   section.card.badges,
+  section.card.shop,
   section.card.week {
     padding: 18px 14px 20px;
+  }
+
+  .shop-grid {
+    grid-template-columns: 1fr;
   }
 
   .badge-grid {

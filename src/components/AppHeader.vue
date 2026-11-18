@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 import ThemeSwitcher from './ThemeSwitcher.vue'
 import MarqueeText from './MarqueeText.vue'
 import UserAvatar from './UserAvatar.vue'
+import RewardBadge from './RewardBadge.vue'
 import { auth, signOut } from '../stores/auth'
 import { ui } from '../stores/ui'
 import { hasSupabase } from '../lib/supabase'
@@ -74,7 +75,14 @@ async function logout() {
               <div class="um-head">
                 <UserAvatar :src="auth.avatarUrl" :name="auth.nickname" :size="40" />
                 <div class="um-id">
-                  <MarqueeText :text="auth.nickname" class="um-name" />
+                  <span class="um-name-row">
+                    <MarqueeText :text="auth.nickname" class="um-name" />
+                    <RewardBadge
+                      v-if="auth.equippedBadge"
+                      :item-id="auth.equippedBadge"
+                      :size="16"
+                    />
+                  </span>
                   <small>{{ auth.user.email }}</small>
                 </div>
               </div>
@@ -271,6 +279,13 @@ async function logout() {
   flex-direction: column;
   min-width: 0;
   line-height: 1.35;
+}
+
+.um-name-row {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
 }
 
 .um-name {

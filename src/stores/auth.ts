@@ -2,13 +2,14 @@ import { reactive } from 'vue'
 import type { User } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
 import { compressAvatar } from '../lib/image'
-import { avatarCache } from './avatars'
+import { avatarCache, badgeCache } from './avatars'
 
 export const auth = reactive({
   ready: false,
   user: null as User | null,
   nickname: '',
   avatarUrl: '',
+  equippedBadge: '',
   loading: false,
   avatarLoading: false,
   error: '',
@@ -29,25 +30,32 @@ function translateError(message: string): string {
   return message
 }
 
-async function ensureProfile(user: User): Promise<{ nickname: string; avatarUrl: string }> {
-  if (!supabase) return { nickname: '', avatarUrl: '' }
+async function ensureProfile(
+  user: User,
+): Promise<{ nickname: string; avatarUrl: string; equippedBadge: string }> {
+  if (!supabase) return { nickname: '', avatarUrl: '', equippedBadge: '' }
   const { data } = await supabase
     .from('profiles')
-    .select('nickname, avatar_url')
+    .select('nickname, avatar_url, equipped_badge')
     .eq('id', user.id)
     .maybeSingle()
   if (data?.nickname) {
-    return { nickname: data.nickname, avatarUrl: (data as { avatar_url?: string | null }).avatar_url ?? '' }
+    const row = data as { avatar_url?: string | null; equipped_badge?: string | null }
+    return {
+      nickname: data.nickname,
+      avatarUrl: row.avatar_url ?? '',
+      equippedBadge: row.equipped_badge ?? '',
+    }
   }
 
   const base = (user.email ?? '同学').split('@')[0].slice(0, 12) || '同学'
   for (let i = 0; i < 6; i++) {
     const nickname = i === 0 ? base : `${base}${Math.floor(Math.random() * 900 + 100)}`
     const { error } = await supabase.from('profiles').insert({ id: user.id, nickname })
-    if (!error) return { nickname, avatarUrl: '' }
+    if (!error) return { nickname, avatarUrl: '', equippedBadge: '' }
     if ((error as { code?: string }).code !== '23505') break
   }
-  return { nickname: base, avatarUrl: '' }
+  return { nickname: base, avatarUrl: '', equippedBadge: '' }
 }
 
 async function applyUser(user: User | null): Promise<void> {
@@ -55,13 +63,16 @@ async function applyUser(user: User | null): Promise<void> {
   if (!user) {
     auth.nickname = ''
     auth.avatarUrl = ''
+    auth.equippedBadge = ''
   } else {
     // 先用邮箱前缀占位，避免头像区域短暂空白；随后以云端的昵称为准
     auth.nickname = (user.email ?? '').split('@')[0] || '同学'
     const profile = await ensureProfile(user)
     auth.nickname = profile.nickname
     auth.avatarUrl = profile.avatarUrl
+    auth.equippedBadge = profile.equippedBadge
     avatarCache[user.id] = profile.avatarUrl
+    badgeCache[user.id] = profile.equippedBadge
   }
   window.dispatchEvent(new Event('qz:auth-changed'))
 }
@@ -119,6 +130,7 @@ export async function signOut(): Promise<void> {
   auth.user = null
   auth.nickname = ''
   auth.avatarUrl = ''
+  auth.equippedBadge = ''
 }
 
 export async function uploadAvatar(file: File): Promise<void> {

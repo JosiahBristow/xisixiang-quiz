@@ -4,6 +4,9 @@ import { supabase } from '../lib/supabase'
 /** userId -> 头像公开地址（'' 表示没有头像或查询失败） */
 export const avatarCache = reactive<Record<string, string>>({})
 
+/** userId -> 正在佩戴的商城徽章 id */
+export const badgeCache = reactive<Record<string, string>>({})
+
 let fetching = false
 let pending = new Set<string>()
 
@@ -25,17 +28,26 @@ export async function ensureAvatars(ids: (string | null | undefined)[]): Promise
   try {
     const targets = [...pending]
     pending = new Set()
-    const { data, error } = await supabase.rpc('lb_avatars', { p_ids: targets })
+    const { data, error } = await supabase.rpc('lb_social', { p_ids: targets })
     if (error) {
       // 迁移未执行或网络失败时先记为无头像，避免反复请求
-      for (const id of targets) avatarCache[id] = ''
+      for (const id of targets) {
+        avatarCache[id] = ''
+        badgeCache[id] = ''
+      }
       return
     }
-    for (const row of (data ?? []) as { id: string; avatar_url: string | null }[]) {
+    for (const row of (data ?? []) as {
+      id: string
+      avatar_url: string | null
+      equipped_badge: string | null
+    }[]) {
       avatarCache[row.id] = row.avatar_url ?? ''
+      badgeCache[row.id] = row.equipped_badge ?? ''
     }
     for (const id of targets) {
       if (!(id in avatarCache)) avatarCache[id] = ''
+      if (!(id in badgeCache)) badgeCache[id] = ''
     }
   } finally {
     fetching = false

@@ -8,7 +8,8 @@ import { auth } from '../stores/auth'
 import { ui } from '../stores/ui'
 import MarqueeText from '../components/MarqueeText.vue'
 import UserAvatar from '../components/UserAvatar.vue'
-import { avatarCache, ensureAvatars } from '../stores/avatars'
+import RewardBadge from '../components/RewardBadge.vue'
+import { avatarCache, badgeCache, ensureAvatars } from '../stores/avatars'
 
 interface PkRow {
   rank: number
@@ -226,6 +227,11 @@ onMounted(load)
                 <span class="user">
                   <UserAvatar :src="avatarCache[row.user_id]" :name="row.nickname" :size="27" />
                   <MarqueeText :text="row.nickname" class="user-name" />
+                  <RewardBadge
+                    v-if="badgeCache[row.user_id]"
+                    :item-id="badgeCache[row.user_id]"
+                    :size="16"
+                  />
                   <span v-if="row.is_me" class="me-tag">我</span>
                   <span v-if="row.streak >= 2" class="streak-tag">{{ row.streak }} 连胜</span>
                 </span>
@@ -248,6 +254,11 @@ onMounted(load)
                 <span class="user">
                   <UserAvatar :src="avatarCache[row.user_id]" :name="row.nickname" :size="27" />
                   <MarqueeText :text="row.nickname" class="user-name" />
+                  <RewardBadge
+                    v-if="badgeCache[row.user_id]"
+                    :item-id="badgeCache[row.user_id]"
+                    :size="16"
+                  />
                   <span v-if="row.is_me" class="me-tag">我</span>
                 </span>
                 <span class="done">{{ row.correct }}</span>
@@ -269,6 +280,11 @@ onMounted(load)
                   <span class="u-body">
                     <span class="u-line">
                       <MarqueeText :text="row.nickname" class="user-name" />
+                      <RewardBadge
+                        v-if="badgeCache[row.user_id]"
+                        :item-id="badgeCache[row.user_id]"
+                        :size="16"
+                      />
                       <span v-if="row.is_me" class="me-tag">我</span>
                     </span>
                     <MarqueeText
@@ -296,6 +312,11 @@ onMounted(load)
                 <span class="user">
                   <UserAvatar :src="avatarCache[row.user_id]" :name="row.nickname" :size="27" />
                   <MarqueeText :text="row.nickname" class="user-name" />
+                  <RewardBadge
+                    v-if="badgeCache[row.user_id]"
+                    :item-id="badgeCache[row.user_id]"
+                    :size="16"
+                  />
                   <span v-if="row.is_me" class="me-tag">我</span>
                 </span>
                 <span class="done">{{ row.done }}</span>

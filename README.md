@@ -10,6 +10,7 @@
 - **联机对战**：房间码 / 快速匹配实时 PK，正确+速度计分，胜负计入 PK 榜
 - **积分与成就**：答对 +10、PK 获胜 +80、活跃日 +20；12 枚徽章、等级称号、连击提示
 - **自定义头像**：上传后自动居中裁剪压缩到 256×256，显示在导航、排行榜、PK 与个人中心
+- **积分商城**：可用积分解锁 3 套主题与 3 枚荣誉徽章，徽章可佩戴展示在排行榜
 - 纯静态站点（Vue 3 + Vite），可直接部署到 GitHub Pages
 - Supabase 提供邮箱登录、作答记录云同步与总榜 / 章节榜 / 周榜
 - 深色、浅色、护眼、墨蓝四套主题，手机 / 电脑自适应
@@ -44,7 +45,8 @@ npm run preview
    [`supabase/migrations/0002_pk.sql`](supabase/migrations/0002_pk.sql)、
    [`supabase/migrations/0004_incentives.sql`](supabase/migrations/0004_incentives.sql)、
    [`supabase/migrations/0005_total_score.sql`](supabase/migrations/0005_total_score.sql)、
-   [`supabase/migrations/0006_avatars.sql`](supabase/migrations/0006_avatars.sql)
+   [`supabase/migrations/0006_avatars.sql`](supabase/migrations/0006_avatars.sql)、
+   [`supabase/migrations/0007_rewards.sql`](supabase/migrations/0007_rewards.sql)
    （脚本幂等，可重复执行）。0001 会创建：
    - `profiles`：昵称（注册时自动生成）
    - `attempts`：逐题作答记录（进度 / 错题本 / 排行榜的数据源）
@@ -60,6 +62,10 @@ npm run preview
 
    0006 为 `profiles` 增加头像地址，创建公开的 `avatars` 存储桶（2MB 限制）、
    按用户目录隔离的存储策略，以及供排行榜/联机查询头像的 `lb_avatars` 函数。
+
+   0007 创建积分商城：`reward_items` 商品目录、`user_rewards` 购买记录、
+   `purchase_reward` / `equip_reward_badge` RPC（含余额校验与佩戴权限），
+   以及批量返回头像与佩戴徽章的 `lb_social` 函数。
 3. 进入 **Authentication → Providers → Email**，关闭 **Confirm email**
    （自己人使用，注册后可立即登录；开着的话需要先点邮件里的确认链接）。
 4. 进入 **Project Settings → API**，复制 **Project URL** 和 **anon public key**，写入项目根目录 `.env`：
@@ -133,6 +139,9 @@ git push -u origin main
 - **成就**：共 12 枚徽章，覆盖首答、连击、答对题量、单章正确率、连续打卡、全勤周与 PK 胜场；
   达成时全局弹出解锁提示，个人中心可查看徽章墙与最近 7 天答题曲线。
 - 未登录时积分与徽章按本机记录计算；登录后随作答记录自动同步，积分榜只统计登录账号。
+- **积分商城**：可用积分 = 累计积分 − 已消费积分。主题（朱砂 / 青瓷 / 夜航）与
+  荣誉徽章（青玉 / 流金 / 丹凤）可分别解锁；徽章穿戴后显示在排行榜与个人中心。
+  消费**不影响积分榜排名**（榜单按累计积分计算）。
 
 ## 六、排行榜规则
 

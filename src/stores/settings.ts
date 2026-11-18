@@ -16,7 +16,7 @@ export function resolvedTheme(): Exclude<ThemeId, 'auto'> {
 }
 
 export function isDarkTheme(): boolean {
-  return ['night', 'ink'].includes(resolvedTheme())
+  return ['night', 'ink', 'nocturne'].includes(resolvedTheme())
 }
 
 function applyTheme(): void {
