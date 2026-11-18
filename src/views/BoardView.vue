@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import MarqueeText from '../components/MarqueeText.vue'
+import MarkdownEditor from '../components/MarkdownEditor.vue'
+import MarkdownView from '../components/MarkdownView.vue'
 import RewardBadge from '../components/RewardBadge.vue'
 import UserAvatar from '../components/UserAvatar.vue'
 import { supabase } from '../lib/supabase'
@@ -312,11 +314,9 @@ onBeforeUnmount(() => {
           <b>{{ auth.nickname }}</b>
           <span v-if="cooldownLeft" class="cooldown">{{ cooldownLeft }} 秒后可再次发送</span>
         </div>
-        <textarea
+        <MarkdownEditor
           v-model="content"
-          class="board-input"
-          rows="3"
-          maxlength="300"
+          :maxlength="300"
           placeholder="写下你的想法、疑问或建议…"
         />
         <div class="composer-foot">
@@ -331,8 +331,7 @@ onBeforeUnmount(() => {
               {{ t }}
             </button>
           </div>
-          <span class="char-count">{{ content.length }}/300</span>
-          <button class="btn btn-primary btn-sm" :disabled="!canSend" @click="submit">
+          <button class="btn btn-primary btn-sm composer-send" :disabled="!canSend" @click="submit">
             {{ sending ? '发送中…' : cooldownLeft ? '冷却中' : '发送' }}
           </button>
         </div>
@@ -395,7 +394,7 @@ onBeforeUnmount(() => {
           </div>
         </header>
 
-        <p class="msg-content">{{ m.content }}</p>
+        <div class="msg-content"><MarkdownView :text="m.content" /></div>
 
         <footer class="msg-actions">
           <button class="act like" :class="{ liked: m.liked }" @click="toggleLike(m)">
@@ -420,7 +419,7 @@ onBeforeUnmount(() => {
                 <span>{{ timeAgo(r.created_at) }}</span>
                 <span v-if="r.hidden" class="badge badge-bad">已隐藏</span>
               </div>
-              <p>{{ r.content }}</p>
+              <div class="reply-content"><MarkdownView :text="r.content" /></div>
               <div class="reply-actions">
                 <button class="act like" :class="{ liked: r.liked }" @click="toggleLike(r)">
                   <span class="heart">♥</span>
@@ -436,15 +435,13 @@ onBeforeUnmount(() => {
         </div>
 
         <div v-if="replyTarget?.id === m.id" class="reply-box">
-          <textarea
+          <MarkdownEditor
             v-model="replyText"
-            class="board-input small"
-            rows="2"
-            maxlength="300"
-            :placeholder="`回复 ${m.nickname}…`"
+            compact
+            :maxlength="300"
+            :placeholder="`回复 ${m.nickname}… 支持 Markdown`"
           />
           <div class="reply-foot">
-            <span class="char-count">{{ replyText.length }}/300</span>
             <button class="btn btn-ghost btn-sm" @click="replyTarget = null">取消</button>
             <button class="btn btn-primary btn-sm" :disabled="!canReply" @click="sendReply">
               {{ replySending ? '发送中…' : cooldownLeft ? '冷却中' : '发送回复' }}
@@ -571,41 +568,16 @@ onBeforeUnmount(() => {
   font-variant-numeric: tabular-nums;
 }
 
-.board-input {
-  width: 100%;
-  min-height: 82px;
-  padding: 11px 13px;
-  border-radius: 11px;
-  border: 1px solid var(--line-strong);
-  background: var(--surface);
-  color: var(--text);
-  font-size: 14px;
-  line-height: 1.7;
-  resize: vertical;
-  outline: none;
-  transition: border-color 0.15s, box-shadow 0.15s;
-}
-
-.board-input.small {
-  min-height: 58px;
-  font-size: 13.5px;
-}
-
-.board-input:focus {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 3px var(--accent-soft);
-}
-
-.board-input::placeholder {
-  color: var(--muted);
-}
-
 .composer-foot {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
   gap: 8px 12px;
   margin-top: 10px;
+}
+
+.composer-send {
+  margin-left: auto;
 }
 
 .composer-topics {
@@ -634,13 +606,6 @@ onBeforeUnmount(() => {
   border-color: var(--accent);
   color: var(--accent-contrast);
   font-weight: 600;
-}
-
-.char-count {
-  margin-left: auto;
-  font-size: 11px;
-  color: var(--muted);
-  font-variant-numeric: tabular-nums;
 }
 
 .board-error {
@@ -809,8 +774,6 @@ onBeforeUnmount(() => {
   margin: 12px 0 0 48px;
   font-size: 14px;
   line-height: 1.8;
-  white-space: pre-wrap;
-  word-break: break-word;
 }
 
 .msg-actions {
@@ -901,12 +864,10 @@ onBeforeUnmount(() => {
   font-weight: 600;
 }
 
-.reply p {
+.reply-content {
   margin: 3px 0 2px;
   font-size: 13px;
   line-height: 1.7;
-  white-space: pre-wrap;
-  word-break: break-word;
 }
 
 .reply-actions {
@@ -924,14 +885,10 @@ onBeforeUnmount(() => {
 
 .reply-foot {
   display: flex;
+  justify-content: flex-end;
   align-items: center;
   gap: 8px;
   margin-top: 8px;
-}
-
-.reply-foot .char-count {
-  margin-left: 0;
-  margin-right: auto;
 }
 
 /* ---------- 空状态 ---------- */
@@ -988,13 +945,6 @@ onBeforeUnmount(() => {
     width: 100%;
   }
 
-  .char-count {
-    margin-left: 0;
-  }
-
-  .composer-foot .btn {
-    margin-left: auto;
-  }
 
   .msg {
     padding: 14px 14px 13px;

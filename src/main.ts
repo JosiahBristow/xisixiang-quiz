@@ -4,6 +4,7 @@ import router from './router'
 import { initSettings } from './stores/settings'
 import './styles/themes.css'
 import './styles/base.css'
+import './styles/markdown.css'
 
 initSettings()
 
