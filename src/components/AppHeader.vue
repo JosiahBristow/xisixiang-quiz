@@ -2,6 +2,7 @@
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import ThemeSwitcher from './ThemeSwitcher.vue'
+import MarqueeText from './MarqueeText.vue'
 import { auth, signOut } from '../stores/auth'
 import { ui } from '../stores/ui'
 import { hasSupabase } from '../lib/supabase'
@@ -71,7 +72,7 @@ async function logout() {
               <div class="um-head">
                 <span class="avatar lg">{{ auth.nickname.slice(0, 1) }}</span>
                 <div class="um-id">
-                  <b>{{ auth.nickname }}</b>
+                  <MarqueeText :text="auth.nickname" class="um-name" />
                   <small>{{ auth.user.email }}</small>
                 </div>
               </div>
@@ -259,8 +260,9 @@ async function logout() {
   line-height: 1.35;
 }
 
-.um-id b {
+.um-name {
   font-size: 14px;
+  font-weight: 600;
 }
 
 .um-id small {

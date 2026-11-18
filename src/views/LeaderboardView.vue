@@ -6,6 +6,7 @@ import { hasSupabase, supabase } from '../lib/supabase'
 import { sync } from '../lib/sync'
 import { auth } from '../stores/auth'
 import { ui } from '../stores/ui'
+import MarqueeText from '../components/MarqueeText.vue'
 
 interface PkRow {
   rank: number
@@ -178,7 +179,7 @@ onMounted(load)
                 <span class="rank" :class="row.rank <= 3 ? 'r' + row.rank : ''">{{ row.rank }}</span>
                 <span class="user">
                   <span class="av">{{ row.nickname.slice(0, 1) }}</span>
-                  <b>{{ row.nickname }}</b>
+                  <MarqueeText :text="row.nickname" class="user-name" />
                   <span v-if="row.is_me" class="me-tag">我</span>
                   <span v-if="row.streak >= 2" class="streak-tag">{{ row.streak }} 连胜</span>
                 </span>
@@ -200,7 +201,7 @@ onMounted(load)
                 <span class="rank" :class="row.rank <= 3 ? 'r' + row.rank : ''">{{ row.rank }}</span>
                 <span class="user">
                   <span class="av">{{ row.nickname.slice(0, 1) }}</span>
-                  <b>{{ row.nickname }}</b>
+                  <MarqueeText :text="row.nickname" class="user-name" />
                   <span v-if="row.is_me" class="me-tag">我</span>
                 </span>
                 <span class="done">{{ row.done }}</span>
@@ -430,12 +431,11 @@ onMounted(load)
   font-weight: 700;
 }
 
-.user b {
+.user-name {
+  flex: 0 1 auto;
+  min-width: 0;
   font-size: 13.5px;
   font-weight: 600;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 .me-tag {
@@ -614,7 +614,7 @@ onMounted(load)
     font-size: 11.5px;
   }
 
-  .user b {
+  .user-name {
     font-size: 13px;
   }
 

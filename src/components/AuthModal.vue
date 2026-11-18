@@ -11,6 +11,7 @@ import {
 import { attempts, resetLocalProgress } from '../stores/progress'
 import { fullSync, sync } from '../lib/sync'
 import { hasSupabase } from '../lib/supabase'
+import MarqueeText from './MarqueeText.vue'
 
 const emit = defineEmits<{ (e: 'close'): void }>()
 
@@ -139,7 +140,7 @@ onBeforeUnmount(() => {
         <div class="profile">
           <span class="avatar-xl">{{ auth.nickname.slice(0, 1) || '我' }}</span>
           <div class="p-id">
-            <b>{{ auth.nickname }}</b>
+            <MarqueeText :text="auth.nickname" class="p-name" />
             <small>{{ auth.user?.email }}</small>
           </div>
         </div>
@@ -354,8 +355,9 @@ onBeforeUnmount(() => {
   line-height: 1.4;
 }
 
-.p-id b {
+.p-name {
   font-size: 16px;
+  font-weight: 600;
 }
 
 .p-id small {

@@ -8,6 +8,7 @@ import { pickCorrect, pointsFor, seededQuestions } from '../lib/pk'
 import { hasSupabase, supabase } from '../lib/supabase'
 import { auth } from '../stores/auth'
 import { ui } from '../stores/ui'
+import MarqueeText from '../components/MarqueeText.vue'
 
 const route = useRoute()
 
@@ -781,13 +782,13 @@ onBeforeUnmount(() => {
           <div class="wait-players">
             <div class="wp-player">
               <span class="avatar lg">{{ auth.nickname.slice(0, 1) }}</span>
-              <b>{{ auth.nickname }}</b>
+              <MarqueeText :text="auth.nickname" class="wp-name" />
               <small>{{ isHost ? '房主 · 你' : '客人 · 你' }}</small>
             </div>
             <span class="wp-vs serif">VS</span>
             <div class="wp-player" :class="{ empty: !opponentOnline }">
               <span class="avatar lg">{{ opponentOnline ? opponentName.slice(0, 1) : '?' }}</span>
-              <b>{{ opponentOnline ? opponentName : '等待对手' }}</b>
+              <MarqueeText :text="opponentOnline ? opponentName : '等待对手'" class="wp-name" />
               <small>{{ opponentOnline ? '已就位' : '把房间码发给好友' }}</small>
             </div>
           </div>
@@ -815,7 +816,7 @@ onBeforeUnmount(() => {
             <div class="sb-side">
               <span class="avatar">{{ auth.nickname.slice(0, 1) }}</span>
               <div class="sb-id">
-                <b>{{ auth.nickname }}</b>
+                <MarqueeText :text="auth.nickname" class="sb-name" />
                 <small>你</small>
               </div>
               <span class="sb-score serif">{{ myScore }}</span>
@@ -824,7 +825,7 @@ onBeforeUnmount(() => {
             <div class="sb-side right">
               <span class="sb-score serif">{{ oppScore }}</span>
               <div class="sb-id">
-                <b>{{ opponentName }}</b>
+                <MarqueeText :text="opponentName" class="sb-name" />
                 <small>{{ opponentOnline ? '对手' : '已掉线' }}</small>
               </div>
               <span class="avatar">{{ opponentName.slice(0, 1) }}</span>
@@ -1196,12 +1197,16 @@ onBeforeUnmount(() => {
   margin-bottom: 2px;
 }
 
-.wp-player b {
+.wp-name {
+  width: 100%;
+  max-width: 132px;
   font-size: 13.5px;
-  max-width: 130px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  font-weight: 600;
+  text-align: center;
+}
+
+.wp-name.scrolling {
+  text-align: left;
 }
 
 .wp-player small {
@@ -1309,12 +1314,10 @@ onBeforeUnmount(() => {
   line-height: 1.3;
 }
 
-.sb-id b {
-  font-size: 12.5px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+.sb-name {
   max-width: 92px;
+  font-size: 12.5px;
+  font-weight: 600;
 }
 
 .sb-id small {
@@ -1692,7 +1695,7 @@ onBeforeUnmount(() => {
     padding: 10px 12px;
   }
 
-  .sb-id b {
+  .sb-name {
     max-width: 64px;
     font-size: 11.5px;
   }
