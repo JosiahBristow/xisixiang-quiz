@@ -61,5 +61,9 @@ export interface LeaderboardRow {
   done: number
   correct: number
   accuracy: number
+  score?: number
+  max_streak?: number
+  days?: number
+  wins?: number
   is_me: boolean
 }

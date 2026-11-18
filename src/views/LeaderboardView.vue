@@ -35,7 +35,7 @@ interface PointsRow {
 type TabId = 'total' | 'chapter' | 'week' | 'pk' | 'points'
 
 const tabs: { id: TabId; label: string; hint: string }[] = [
-  { id: 'total', label: '总榜', hint: '按已刷题目数排名，同数量看正确率' },
+  { id: 'total', label: '总榜', hint: '综合分 = 答对×10 + 正确率×3 + 最长连对×5 + 活跃天×10 + PK胜×25' },
   { id: 'chapter', label: '章节榜', hint: '该章刷过一半以上才能入榜，按正确率排名' },
   { id: 'week', label: '周榜', hint: '每周一 0 点（北京时间）重新开始，统计本周答题数' },
   { id: 'pk', label: 'PK 榜', hint: '按联机 PK 胜场排名，同胜场看胜率' },
@@ -123,6 +123,10 @@ async function load() {
       done: Number(r.done),
       correct: Number(r.correct),
       accuracy: Number(r.accuracy),
+      score: Number(r.score ?? 0),
+      max_streak: Number(r.max_streak ?? 0),
+      days: Number(r.days ?? 0),
+      wins: Number(r.wins ?? 0),
       is_me: Boolean(r.is_me),
     }))
   } catch (e) {
@@ -188,7 +192,7 @@ onMounted(load)
           <div class="board-head">
             <span class="col-rank">名次</span>
             <span class="col-user">同学</span>
-            <span class="col-done">{{ tab === 'points' ? '答对' : tab === 'pk' ? '胜 / 场' : tab === 'week' ? '本周答题' : '已刷题数' }}</span>
+            <span class="col-done">{{ tab === 'total' ? '综合分' : tab === 'points' ? '答对' : tab === 'pk' ? '胜 / 场' : tab === 'week' ? '本周答题' : '已刷题数' }}</span>
             <span class="col-acc">{{ tab === 'points' ? '积分' : tab === 'pk' ? '胜率' : '正确率' }}</span>
           </div>
 
@@ -247,6 +251,32 @@ onMounted(load)
             </ul>
           </template>
 
+          <template v-else-if="tab === 'total'">
+            <div v-if="!rows.length" class="board-msg">
+              <div class="empty-mark serif">榜</div>
+              <p>还没有人上榜，刷几道题就能拿下第一名。</p>
+            </div>
+            <ul v-else class="rows">
+              <li v-for="row in rows" :key="row.user_id" class="row total-row" :class="{ me: row.is_me }">
+                <span class="rank" :class="row.rank <= 3 ? 'r' + row.rank : ''">{{ row.rank }}</span>
+                <span class="user">
+                  <span class="av">{{ row.nickname.slice(0, 1) }}</span>
+                  <span class="u-body">
+                    <span class="u-line">
+                      <MarqueeText :text="row.nickname" class="user-name" />
+                      <span v-if="row.is_me" class="me-tag">我</span>
+                    </span>
+                    <small class="u-sub">答对 {{ row.correct }} · 连击 {{ row.max_streak }} · 活跃 {{ row.days }} 天</small>
+                  </span>
+                </span>
+                <span class="done score">{{ row.score }}</span>
+                <span class="acc" :class="row.accuracy >= 80 ? 'good' : row.accuracy >= 60 ? 'mid' : 'low'">
+                  {{ row.accuracy }}%
+                </span>
+              </li>
+            </ul>
+          </template>
+
           <template v-else>
             <div v-if="!rows.length" class="board-msg">
               <div class="empty-mark serif">榜</div>
@@ -293,7 +323,10 @@ onMounted(load)
           <template v-else-if="auth.user && myRow">
             <span class="my-label">我的名次</span>
             <b class="my-rank serif">第 {{ myRow.rank }} 名</b>
-            <span class="my-detail">{{ myRow.done }} 题 · 正确率 {{ myRow.accuracy }}%</span>
+            <span v-if="tab === 'total'" class="my-detail">
+              综合分 {{ myRow.score }} · 答对 {{ myRow.correct }} 题 · 正确率 {{ myRow.accuracy }}%
+            </span>
+            <span v-else class="my-detail">{{ myRow.done }} 题 · 正确率 {{ myRow.accuracy }}%</span>
           </template>
           <template v-else-if="auth.user">
             <span class="my-label">我的名次</span>
@@ -309,7 +342,7 @@ onMounted(load)
         </section>
 
         <ul class="rules">
-          <li><b>总榜</b> · 按已刷题目数排序，数量相同看正确率</li>
+          <li><b>总榜</b> · 综合分 = 答对×10 + 正确率×3 + 最长连对×5 + 活跃天×10 + PK胜×25</li>
           <li><b>章节榜</b> · 该章刷过一半以上题目才能入榜，按正确率排序</li>
           <li><b>周榜</b> · 每周一 0 点（北京时间）重新统计</li>
           <li><b>PK 榜</b> · 按联机对战胜场排序，同胜场看胜率</li>
@@ -507,6 +540,35 @@ onMounted(load)
   min-width: 0;
   font-size: 13.5px;
   font-weight: 600;
+}
+
+.u-body {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.u-line {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.u-sub {
+  font-size: 10px;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.4;
+  font-variant-numeric: tabular-nums;
+}
+
+.done.score {
+  font-size: 15px;
+  color: var(--accent);
 }
 
 .me-tag {

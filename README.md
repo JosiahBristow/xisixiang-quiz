@@ -41,7 +41,8 @@ npm run preview
 1. 到 [supabase.com](https://supabase.com) 新建一个免费项目（Region 建议 Singapore / East Asia）。
 2. 打开 **SQL Editor**，依次执行 [`supabase/migrations/0001_init.sql`](supabase/migrations/0001_init.sql)、
    [`supabase/migrations/0002_pk.sql`](supabase/migrations/0002_pk.sql)、
-   [`supabase/migrations/0004_incentives.sql`](supabase/migrations/0004_incentives.sql)
+   [`supabase/migrations/0004_incentives.sql`](supabase/migrations/0004_incentives.sql)、
+   [`supabase/migrations/0005_total_score.sql`](supabase/migrations/0005_total_score.sql)
    （脚本幂等，可重复执行）。0001 会创建：
    - `profiles`：昵称（注册时自动生成）
    - `attempts`：逐题作答记录（进度 / 错题本 / 排行榜的数据源）
@@ -52,6 +53,8 @@ npm run preview
    房间与匹配相关 RPC，以及 `lb_pk` 胜负榜函数。
 
    0004 只新增 `lb_points` 积分榜函数；积分与成就本身由作答记录实时推导，不占用新表。
+
+   0005 重写 `lb_total`，总榜改为综合分：答对×10 + 正确率×3 + 最长连对×5 + 活跃天×10 + PK胜×25。
 3. 进入 **Authentication → Providers → Email**，关闭 **Confirm email**
    （自己人使用，注册后可立即登录；开着的话需要先点邮件里的确认链接）。
 4. 进入 **Project Settings → API**，复制 **Project URL** 和 **anon public key**，写入项目根目录 `.env`：
@@ -130,7 +133,7 @@ git push -u origin main
 
 | 榜单 | 统计口径 |
 | --- | --- |
-| 总榜 | 按去重后的已刷题数排序，数量相同看正确率 |
+| 总榜 | 综合分排序：答对×10 + 正确率×3 + 最长连对×5 + 活跃天×10 + PK胜×25 |
 | 章节榜 | 该章刷过一半以上题目才入榜，按正确率排序 |
 | 周榜 | 每周一 0 点（北京时间）重新开始，统计本周答题数 |
 | PK 榜 | 按联机对战胜场排序，同胜场看胜率，额外显示当前连胜 |
