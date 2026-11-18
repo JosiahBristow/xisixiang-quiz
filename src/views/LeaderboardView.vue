@@ -426,6 +426,10 @@ onMounted(load)
   color: var(--muted);
 }
 
+.board-head span {
+  white-space: nowrap;
+}
+
 .col-done,
 .col-acc {
   text-align: right;

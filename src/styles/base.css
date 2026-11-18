@@ -227,6 +227,7 @@ ol {
   font-size: 13px;
   font-weight: 500;
   color: var(--text-2);
+  white-space: nowrap;
   transition: background-color 0.2s var(--ease), color 0.2s;
 }
 
@@ -412,5 +413,19 @@ ol {
     animation-duration: 0.01ms !important;
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
+  }
+}
+
+/* 窄屏下的分段控件：避免中文标签被挤成竖排 */
+@media (max-width: 640px) {
+  .seg button {
+    padding: 0 11px;
+  }
+}
+
+@media (max-width: 360px) {
+  .seg button {
+    padding: 0 8px;
+    font-size: 12px;
   }
 }

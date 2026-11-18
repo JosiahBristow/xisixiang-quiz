@@ -53,6 +53,7 @@ async function logout() {
           <span class="nav-long">随机测试</span><span class="nav-short">测试</span>
         </router-link>
         <router-link to="/pk" :class="{ on: route.name === 'pk' }">对战</router-link>
+        <router-link to="/me" :class="{ on: route.name === 'me' }">成就</router-link>
         <router-link to="/leaderboard" :class="{ on: route.name === 'leaderboard' }">
           <span class="nav-long">排行榜</span><span class="nav-short">排行</span>
         </router-link>
@@ -188,6 +189,10 @@ async function logout() {
   color: var(--accent);
   background: var(--accent-soft);
   font-weight: 600;
+}
+
+.nav-long {
+  display: inline;
 }
 
 .nav-short {
@@ -355,17 +360,7 @@ async function logout() {
   }
 }
 
-@media (max-width: 360px) {
-  .head-inner {
-    gap: 5px;
-  }
-
-  .seal {
-    width: 30px;
-    height: 30px;
-    font-size: 17px;
-  }
-
+@media (max-width: 420px) {
   .nav-long {
     display: none;
   }
@@ -376,6 +371,23 @@ async function logout() {
 
   .nav a {
     padding: 6px 5px;
+    font-size: 13px;
+  }
+}
+
+@media (max-width: 360px) {
+  .head-inner {
+    gap: 4px;
+  }
+
+  .seal {
+    width: 30px;
+    height: 30px;
+    font-size: 17px;
+  }
+
+  .nav a {
+    padding: 6px 4px;
     font-size: 12px;
   }
 

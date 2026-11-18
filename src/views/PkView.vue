@@ -1059,6 +1059,7 @@ onBeforeUnmount(() => {
 .pref-chips button {
   height: 28px;
   padding: 0 9px;
+  white-space: nowrap;
   border-radius: 7px;
   border: 1px solid var(--line);
   background: var(--surface-2);
@@ -1353,6 +1354,8 @@ onBeforeUnmount(() => {
 .timer {
   display: inline-flex;
   align-items: center;
+  flex-shrink: 0;
+  white-space: nowrap;
   gap: 5px;
   font-size: 13px;
   font-weight: 600;
