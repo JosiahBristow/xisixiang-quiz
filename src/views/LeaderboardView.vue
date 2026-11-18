@@ -240,7 +240,6 @@ onMounted(load)
                   <span class="av">{{ row.nickname.slice(0, 1) }}</span>
                   <MarqueeText :text="row.nickname" class="user-name" />
                   <span v-if="row.is_me" class="me-tag">我</span>
-                  <span v-if="row.max_streak >= 5" class="streak-tag">最长 {{ row.max_streak }} 连</span>
                 </span>
                 <span class="done">{{ row.correct }}</span>
                 <span class="acc points">{{ row.points }}</span>
