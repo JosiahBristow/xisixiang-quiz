@@ -271,7 +271,10 @@ onMounted(load)
                       <MarqueeText :text="row.nickname" class="user-name" />
                       <span v-if="row.is_me" class="me-tag">我</span>
                     </span>
-                    <small class="u-sub">答对 {{ row.correct }} · 连击 {{ row.max_streak }} · 活跃 {{ row.days }} 天</small>
+                    <MarqueeText
+                      :text="`答对 ${row.correct} · 连击 ${row.max_streak} · 活跃 ${row.days} 天`"
+                      class="u-sub"
+                    />
                   </span>
                 </span>
                 <span class="done score">{{ row.score }}</span>
@@ -564,9 +567,6 @@ onMounted(load)
 .u-sub {
   font-size: 10px;
   color: var(--muted);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
   line-height: 1.4;
   font-variant-numeric: tabular-nums;
 }
