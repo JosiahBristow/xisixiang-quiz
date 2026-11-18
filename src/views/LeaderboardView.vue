@@ -7,23 +7,38 @@ import { sync } from '../lib/sync'
 import { auth } from '../stores/auth'
 import { ui } from '../stores/ui'
 
-type TabId = 'total' | 'chapter' | 'week'
+interface PkRow {
+  rank: number
+  user_id: string
+  nickname: string
+  games: number
+  wins: number
+  draws: number
+  winrate: number
+  streak: number
+  is_me: boolean
+}
+
+type TabId = 'total' | 'chapter' | 'week' | 'pk'
 
 const tabs: { id: TabId; label: string; hint: string }[] = [
   { id: 'total', label: '总榜', hint: '按已刷题目数排名，同数量看正确率' },
   { id: 'chapter', label: '章节榜', hint: '该章刷过一半以上才能入榜，按正确率排名' },
   { id: 'week', label: '周榜', hint: '每周一 0 点（北京时间）重新开始，统计本周答题数' },
+  { id: 'pk', label: 'PK 榜', hint: '按联机 PK 胜场排名，同胜场看胜率' },
 ]
 
 const tab = ref<TabId>('total')
 const chapterId = ref('ch1')
 const rows = ref<LeaderboardRow[]>([])
+const pkRows = ref<PkRow[]>([])
 const loading = ref(false)
 const error = ref('')
 const loadedOnce = ref(false)
 
 const hint = computed(() => tabs.find((t) => t.id === tab.value)?.hint ?? '')
 const myRow = computed(() => rows.value.find((r) => r.is_me))
+const myPkRow = computed(() => pkRows.value.find((r) => r.is_me))
 const currentChapter = computed(() => chapterById.get(chapterId.value))
 
 async function load() {
@@ -31,6 +46,25 @@ async function load() {
   loading.value = true
   error.value = ''
   try {
+    if (tab.value === 'pk') {
+      const response = await supabase.rpc('lb_pk', { p_limit: 50 })
+      if (response.error) throw response.error
+      pkRows.value = ((response.data ?? []) as Record<string, unknown>[]).map((r) => ({
+        rank: Number(r.rank),
+        user_id: String(r.user_id),
+        nickname: String(r.nickname ?? '匿名同学'),
+        games: Number(r.games),
+        wins: Number(r.wins),
+        draws: Number(r.draws),
+        winrate: Number(r.winrate),
+        streak: Number(r.streak),
+        is_me: Boolean(r.is_me),
+      }))
+      rows.value = []
+      return
+    }
+
+    pkRows.value = []
     let response
     if (tab.value === 'total') {
       response = await supabase.rpc('lb_total', { p_limit: 50 })
@@ -57,9 +91,10 @@ async function load() {
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e)
     error.value = /could not find the function|does not exist/i.test(msg)
-      ? '排行榜数据表还没建好：请先在 Supabase SQL Editor 执行 supabase/migrations/0001_init.sql'
+      ? '榜单数据还没准备好：请先在 Supabase SQL Editor 执行 supabase/migrations 下的迁移脚本'
       : '排行榜加载失败，请稍后重试。'
     rows.value = []
+    pkRows.value = []
   } finally {
     loading.value = false
     loadedOnce.value = true
@@ -115,8 +150,8 @@ onMounted(load)
           <div class="board-head">
             <span class="col-rank">名次</span>
             <span class="col-user">同学</span>
-            <span class="col-done">{{ tab === 'week' ? '本周答题' : '已刷题数' }}</span>
-            <span class="col-acc">正确率</span>
+            <span class="col-done">{{ tab === 'pk' ? '胜 / 场' : tab === 'week' ? '本周答题' : '已刷题数' }}</span>
+            <span class="col-acc">{{ tab === 'pk' ? '胜率' : '正确率' }}</span>
           </div>
 
           <div v-if="loading && !loadedOnce" class="sk-rows">
@@ -133,29 +168,62 @@ onMounted(load)
             <button class="btn btn-soft btn-sm" @click="load">重新加载</button>
           </div>
 
-          <div v-else-if="!rows.length" class="board-msg">
-            <div class="empty-mark serif">榜</div>
-            <p>还没有人上榜，刷几道题就能拿下第一名。</p>
-          </div>
+          <template v-else-if="tab === 'pk'">
+            <div v-if="!pkRows.length" class="board-msg">
+              <div class="empty-mark serif">战</div>
+              <p>还没有人开战，去联机对战打一局就能拿下第一名。</p>
+            </div>
+            <ul v-else class="rows">
+              <li v-for="row in pkRows" :key="row.user_id" class="row" :class="{ me: row.is_me }">
+                <span class="rank" :class="row.rank <= 3 ? 'r' + row.rank : ''">{{ row.rank }}</span>
+                <span class="user">
+                  <span class="av">{{ row.nickname.slice(0, 1) }}</span>
+                  <b>{{ row.nickname }}</b>
+                  <span v-if="row.is_me" class="me-tag">我</span>
+                  <span v-if="row.streak >= 2" class="streak-tag">{{ row.streak }} 连胜</span>
+                </span>
+                <span class="done">{{ row.wins }} / {{ row.games }}</span>
+                <span class="acc" :class="row.winrate >= 70 ? 'good' : row.winrate >= 40 ? 'mid' : 'low'">
+                  {{ row.winrate }}%
+                </span>
+              </li>
+            </ul>
+          </template>
 
-          <ul v-else class="rows">
-            <li v-for="row in rows" :key="row.user_id" class="row" :class="{ me: row.is_me }">
-              <span class="rank" :class="row.rank <= 3 ? 'r' + row.rank : ''">{{ row.rank }}</span>
-              <span class="user">
-                <span class="av">{{ row.nickname.slice(0, 1) }}</span>
-                <b>{{ row.nickname }}</b>
-                <span v-if="row.is_me" class="me-tag">我</span>
-              </span>
-              <span class="done">{{ row.done }}</span>
-              <span class="acc" :class="row.accuracy >= 80 ? 'good' : row.accuracy >= 60 ? 'mid' : 'low'">
-                {{ row.accuracy }}%
-              </span>
-            </li>
-          </ul>
+          <template v-else>
+            <div v-if="!rows.length" class="board-msg">
+              <div class="empty-mark serif">榜</div>
+              <p>还没有人上榜，刷几道题就能拿下第一名。</p>
+            </div>
+            <ul v-else class="rows">
+              <li v-for="row in rows" :key="row.user_id" class="row" :class="{ me: row.is_me }">
+                <span class="rank" :class="row.rank <= 3 ? 'r' + row.rank : ''">{{ row.rank }}</span>
+                <span class="user">
+                  <span class="av">{{ row.nickname.slice(0, 1) }}</span>
+                  <b>{{ row.nickname }}</b>
+                  <span v-if="row.is_me" class="me-tag">我</span>
+                </span>
+                <span class="done">{{ row.done }}</span>
+                <span class="acc" :class="row.accuracy >= 80 ? 'good' : row.accuracy >= 60 ? 'mid' : 'low'">
+                  {{ row.accuracy }}%
+                </span>
+              </li>
+            </ul>
+          </template>
         </section>
 
-        <section class="my card" :class="{ empty: !myRow }">
-          <template v-if="auth.user && myRow">
+        <section class="my card" :class="{ empty: tab === 'pk' ? !myPkRow : !myRow }">
+          <template v-if="auth.user && tab === 'pk' && myPkRow">
+            <span class="my-label">我的 PK 名次</span>
+            <b class="my-rank serif">第 {{ myPkRow.rank }} 名</b>
+            <span class="my-detail">{{ myPkRow.wins }} 胜 / {{ myPkRow.games }} 场 · 胜率 {{ myPkRow.winrate }}%</span>
+          </template>
+          <template v-else-if="auth.user && tab === 'pk'">
+            <span class="my-label">我的 PK 名次</span>
+            <b class="my-rank serif">还没有对战记录</b>
+            <span class="my-detail">去联机对战打一局就能上榜</span>
+          </template>
+          <template v-else-if="auth.user && myRow">
             <span class="my-label">我的名次</span>
             <b class="my-rank serif">第 {{ myRow.rank }} 名</b>
             <span class="my-detail">{{ myRow.done }} 题 · 正确率 {{ myRow.accuracy }}%</span>
@@ -177,7 +245,8 @@ onMounted(load)
           <li><b>总榜</b> · 按已刷题目数排序，数量相同看正确率</li>
           <li><b>章节榜</b> · 该章刷过一半以上题目才能入榜，按正确率排序</li>
           <li><b>周榜</b> · 每周一 0 点（北京时间）重新统计</li>
-          <li>排名基于登录账号的作答记录，未登录时只在本机保存进度</li>
+          <li><b>PK 榜</b> · 按联机对战胜场排序，同胜场看胜率</li>
+          <li>排名基于登录账号的记录，未登录时只在本机保存进度</li>
         </ul>
       </template>
     </div>
@@ -377,6 +446,17 @@ onMounted(load)
   color: var(--accent-contrast);
   font-size: 10px;
   font-weight: 700;
+}
+
+.streak-tag {
+  flex-shrink: 0;
+  padding: 1px 5px;
+  border-radius: 5px;
+  border: 1px solid color-mix(in srgb, var(--gold) 40%, var(--line));
+  color: var(--gold);
+  font-size: 10px;
+  font-weight: 600;
+  white-space: nowrap;
 }
 
 .done {

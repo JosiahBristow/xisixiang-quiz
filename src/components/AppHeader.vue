@@ -48,8 +48,13 @@ async function logout() {
 
       <nav class="nav">
         <router-link to="/" :class="{ on: onQuiz }">题库</router-link>
-        <router-link to="/test" :class="{ on: route.name === 'test' }">随机测试</router-link>
-        <router-link to="/leaderboard" :class="{ on: route.name === 'leaderboard' }">排行榜</router-link>
+        <router-link to="/test" :class="{ on: route.name === 'test' }">
+          <span class="nav-long">随机测试</span><span class="nav-short">测试</span>
+        </router-link>
+        <router-link to="/pk" :class="{ on: route.name === 'pk' }">对战</router-link>
+        <router-link to="/leaderboard" :class="{ on: route.name === 'leaderboard' }">
+          <span class="nav-long">排行榜</span><span class="nav-short">排行</span>
+        </router-link>
       </nav>
 
       <div class="head-right">
@@ -177,6 +182,10 @@ async function logout() {
   font-weight: 600;
 }
 
+.nav-short {
+  display: none;
+}
+
 .head-right {
   display: flex;
   align-items: center;
@@ -295,10 +304,10 @@ async function logout() {
 @media (max-width: 640px) {
   .head-inner {
     height: 58px;
-    gap: 8px;
+    gap: 6px;
   }
 
-  /* 移动端只保留印章，给三段导航腾出空间 */
+  /* 移动端只保留印章，给四项导航腾出空间 */
   .brand-text {
     display: none;
   }
@@ -310,12 +319,12 @@ async function logout() {
   }
 
   .nav {
-    margin-left: 2px;
-    gap: 0;
+    margin-left: 0;
+    gap: 1px;
   }
 
   .nav a {
-    padding: 6px 10px;
+    padding: 6px;
     font-size: 13px;
   }
 
@@ -339,7 +348,7 @@ async function logout() {
 
 @media (max-width: 360px) {
   .head-inner {
-    gap: 6px;
+    gap: 5px;
   }
 
   .seal {
@@ -348,8 +357,16 @@ async function logout() {
     font-size: 17px;
   }
 
+  .nav-long {
+    display: none;
+  }
+
+  .nav-short {
+    display: inline;
+  }
+
   .nav a {
-    padding: 5px 7px;
+    padding: 6px 5px;
     font-size: 12px;
   }
 
