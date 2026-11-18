@@ -291,6 +291,19 @@ as $$
      and created_at > now() - interval '5 minutes';
 $$;
 
+create or replace function public.pk_start_room(p_code text)
+returns void
+language sql
+security definer
+set search_path = public, auth
+as $$
+  update public.pk_rooms
+     set status = 'playing', started_at = now()
+   where code = upper(trim(p_code))
+     and host_id = auth.uid()
+     and status = 'waiting';
+$$;
+
 create or replace function public.pk_my_room()
 returns jsonb
 language plpgsql
@@ -306,8 +319,8 @@ begin
   select * into v_room
     from public.pk_rooms
    where (host_id = me or guest_id = me)
-     and status in ('waiting', 'playing')
-     and created_at > now() - interval '30 minutes'
+     and status = 'waiting'
+     and created_at > now() - interval '5 minutes'
    order by created_at desc
    limit 1;
   if not found then return null; end if;
@@ -506,6 +519,7 @@ grant execute on function public.pk_get_room(text) to authenticated;
 grant execute on function public.pk_enqueue(jsonb) to authenticated;
 grant execute on function public.pk_cancel() to authenticated;
 grant execute on function public.pk_my_room() to authenticated;
+grant execute on function public.pk_start_room(text) to authenticated;
 grant execute on function public.pk_leave_room(text) to authenticated;
 grant execute on function public.pk_finish(text, int, int, boolean) to authenticated;
 grant execute on function public.lb_pk(int) to anon, authenticated;

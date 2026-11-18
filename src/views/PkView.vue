@@ -63,6 +63,9 @@ let matchPoll: ReturnType<typeof setInterval> | null = null
 let matchTick: ReturnType<typeof setInterval> | null = null
 let roomPoll: ReturnType<typeof setInterval> | null = null
 let walkoverTimeout: ReturnType<typeof setTimeout> | null = null
+let heartbeatTick: ReturnType<typeof setInterval> | null = null
+let monitorTick: ReturnType<typeof setInterval> | null = null
+let lastSeen = 0
 let autoJoined = false
 
 const isHost = computed(() => Boolean(room.value && auth.user && room.value.host_id === auth.user.id))
@@ -73,10 +76,6 @@ const opponentName = computed(() => {
   return room.value.host_id === auth.user.id
     ? room.value.guest_nickname || '对手'
     : room.value.host_nickname || '对手'
-})
-const opponentId = computed(() => {
-  if (!room.value || !auth.user) return null
-  return room.value.host_id === auth.user.id ? room.value.guest_id : room.value.host_id
 })
 const shareLink = computed(() =>
   room.value ? `${location.origin}${location.pathname}#/pk?room=${room.value.code}` : '',
@@ -136,6 +135,28 @@ function stopWalkover() {
     walkoverTimeout = null
   }
 }
+function stopHeartbeat() {
+  if (heartbeatTick) {
+    clearInterval(heartbeatTick)
+    heartbeatTick = null
+  }
+  if (monitorTick) {
+    clearInterval(monitorTick)
+    monitorTick = null
+  }
+}
+function startHeartbeat() {
+  stopHeartbeat()
+  lastSeen = Date.now()
+  heartbeatTick = setInterval(() => {
+    if (!['countdown', 'question', 'reveal'].includes(phase.value)) return
+    channel.value?.send({ type: 'broadcast', event: 'ping', payload: { userId: auth.user?.id } })
+  }, 3000)
+  monitorTick = setInterval(() => {
+    if (!['countdown', 'question', 'reveal'].includes(phase.value)) return
+    if (lastSeen && Date.now() - lastSeen > 12000) walkoverEnd()
+  }, 1000)
+}
 function stopAllTimers() {
   stopQuestionTimer()
   stopNext()
@@ -144,6 +165,7 @@ function stopAllTimers() {
   stopMatching()
   stopRoomPoll()
   stopWalkover()
+  stopHeartbeat()
 }
 
 function resetMatch() {
@@ -173,8 +195,9 @@ function resetMatch() {
 /* ---------- 房间 ---------- */
 function enterRoom(data: PkRoom) {
   if (!supabase) return
-  if (data.status === 'cancelled' || data.status === 'finished') {
-    error.value = data.status === 'cancelled' ? '房间已取消' : '本局已结束'
+  if (data.status === 'cancelled' || data.status === 'finished' || data.status === 'playing') {
+    error.value =
+      data.status === 'cancelled' ? '房间已取消' : data.status === 'playing' ? '本局已开始' : '本局已结束'
     return
   }
   resetMatch()
@@ -197,6 +220,7 @@ function subscribeRoom() {
   ch.on('presence', { event: 'sync' }, () => onPresence())
   ch.on('broadcast', { event: 'start' }, ({ payload }) => onStartBroadcast(payload))
   ch.on('broadcast', { event: 'answer' }, ({ payload }) => onAnswerBroadcast(payload))
+  ch.on('broadcast', { event: 'ping' }, ({ payload }) => onHeartbeat(payload))
   ch.on('broadcast', { event: 'rematch' }, ({ payload }) => onRematchBroadcast(payload))
   ch.subscribe((status) => {
     if (status === 'SUBSCRIBED') void ch.track({ nickname: auth.nickname })
@@ -260,7 +284,6 @@ async function startMatchmaking() {
   if (!supabase || busy.value) return
   busy.value = true
   error.value = ''
-  await supabase.rpc('pk_cancel')
   const { data, error: e } = await supabase.rpc('pk_enqueue', {
     p_prefs: { count: prefCount.value, limit: prefLimit.value },
   })
@@ -316,6 +339,7 @@ function startRoomPoll() {
       return
     }
     room.value = { ...room.value, guest_id: r.guest_id, guest_nickname: r.guest_nickname }
+    if (opponentOnline.value && isHost.value && phase.value === 'waiting') scheduleStart()
   }, 3000)
 }
 
@@ -324,9 +348,19 @@ function onPresence() {
   const r = room.value
   const u = auth.user
   if (!ch || !r || !u) return
-  const state = ch.presenceState() as Record<string, unknown[]>
-  const hasOpponent = Boolean(opponentId.value && state[opponentId.value])
+  const state = ch.presenceState() as Record<string, { nickname?: string }[]>
+  const otherId = Object.keys(state).find((id) => id !== u.id)
+  const hasOpponent = Boolean(otherId)
   opponentOnline.value = hasOpponent
+  if (hasOpponent) lastSeen = Date.now()
+
+  if (otherId) {
+    const meta = state[otherId]?.[0]
+    if (meta?.nickname) {
+      if (r.host_id === u.id) r.guest_nickname = meta.nickname
+      else r.host_nickname = meta.nickname
+    }
+  }
 
   if (phase.value === 'waiting') {
     if (hasOpponent && isHost.value) scheduleStart()
@@ -354,6 +388,7 @@ function scheduleStart() {
     startTimeout = null
     const r = room.value
     if (!r || phase.value !== 'waiting' || !opponentOnline.value) return
+    void supabase?.rpc('pk_start_room', { p_code: r.code })
     channel.value?.send({
       type: 'broadcast',
       event: 'start',
@@ -386,6 +421,7 @@ function beginMatch(seed: number, count: number, limit: number) {
   phase.value = 'countdown'
   stopStart()
   stopRoomPoll()
+  startHeartbeat()
   countdownTick = setInterval(() => {
     countdown.value -= 1
     if (countdown.value <= 0) {
@@ -450,9 +486,15 @@ function submitAnswer(key: string | null) {
   if (oppSubmitted.value) endQuestion()
 }
 
+function onHeartbeat(payload: unknown) {
+  const p = payload as { userId?: string } | null
+  if (p?.userId && p.userId !== auth.user?.id) lastSeen = Date.now()
+}
+
 function onAnswerBroadcast(payload: unknown) {
   const p = payload as { userId?: string; qIndex?: number; pick?: string | null; elapsed?: number } | null
   if (!p || !auth.user) return
+  if (p.userId !== auth.user.id) lastSeen = Date.now()
   if (p.qIndex !== qIndex.value) return
   if (p.userId === auth.user.id) return
   if (oppSubmitted.value) return
@@ -491,6 +533,7 @@ function finishMatch(walkover: boolean) {
   stopCountdown()
   stopWalkover()
   stopRoomPoll()
+  stopHeartbeat()
   const outcome: 'win' | 'loss' | 'draw' = walkover
     ? 'win'
     : myScore.value > oppScore.value
@@ -608,6 +651,10 @@ onMounted(() => {
   if (q) {
     pendingCode.value = q
     joinCode.value = q
+    if (auth.user && !autoJoined) {
+      autoJoined = true
+      void joinRoomByCode(q)
+    }
   }
 })
 
