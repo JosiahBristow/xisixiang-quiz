@@ -3,7 +3,7 @@ import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import type { Question } from '../types'
 import { allQuestions, questionById, sameAnswer, shuffle } from '../lib/bank'
-import { recordAttempts } from '../stores/progress'
+import { latestByQuestion, recordAttempts } from '../stores/progress'
 import { settings } from '../stores/settings'
 import { scheduleSync } from '../lib/sync'
 
@@ -33,8 +33,14 @@ const total = computed(() => questions.value.length)
 const current = computed<Question | undefined>(() => questions.value[index.value])
 const multi = computed(() => current.value?.type === 'multi')
 
+const testPool = computed(() =>
+  settings.skipCorrect
+    ? allQuestions.filter((q) => latestByQuestion.value.get(q.id)?.correct !== true)
+    : allQuestions,
+)
+
 const actualCount = computed(() =>
-  chosen.value === 0 ? allQuestions.length : Math.min(chosen.value, allQuestions.length),
+  chosen.value === 0 ? testPool.value.length : Math.min(chosen.value, testPool.value.length),
 )
 
 const answeredCount = computed(
@@ -130,7 +136,7 @@ function clearSession() {
 
 function start() {
   settings.testCount = chosen.value
-  const pool = shuffle(allQuestions)
+  const pool = shuffle(testPool.value)
   questions.value = pool.slice(0, actualCount.value)
   resetAnswers()
   index.value = 0
@@ -330,13 +336,19 @@ onBeforeUnmount(() => {
         </div>
 
         <p class="setup-desc">
-          从 {{ allQuestions.length }} 道题中随机抽题。答题过程中答案全部隐藏，交卷后统一公布结果，答错的题自动进入错题本。
+          从 {{ testPool.length }} 道题中随机抽题。答题过程中答案全部隐藏，交卷后统一公布结果，答错的题自动进入错题本。
         </p>
 
         <div class="count-block">
           <div class="count-label">
             <b>抽题数量</b>
-            <span>共 {{ allQuestions.length }} 道题</span>
+            <span>
+              {{
+                settings.skipCorrect
+                  ? `可抽 ${testPool.length} / ${allQuestions.length} 题`
+                  : `共 ${allQuestions.length} 道题`
+              }}
+            </span>
           </div>
           <div class="count-chips">
             <button
@@ -351,13 +363,32 @@ onBeforeUnmount(() => {
           </div>
         </div>
 
+        <div class="skip-row">
+          <div class="skip-copy">
+            <b>跳过已答对</b>
+            <small>只从还没答对的题里抽题</small>
+          </div>
+          <label class="switch-row">
+            <input v-model="settings.skipCorrect" type="checkbox" />
+            <span class="switch" />
+          </label>
+        </div>
+
         <ul class="setup-rules">
           <li>可自由跳题、修改答案，交卷前不显示任何对错</li>
           <li>交卷后逐题公布正确答案与知识点</li>
           <li>答错的题自动加入错题本，未作答不计入</li>
         </ul>
 
-        <button class="btn btn-primary btn-lg setup-start" @click="start">
+        <p v-if="!testPool.length" class="pool-empty">
+          没有可抽的题目了，关闭「跳过已答对」再试试。
+        </p>
+
+        <button
+          class="btn btn-primary btn-lg setup-start"
+          :disabled="actualCount === 0"
+          @click="start"
+        >
           开始测试 · {{ actualCount }} 题
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M5 12h14m0 0-6-6m6 6-6 6" />
@@ -696,6 +727,91 @@ onBeforeUnmount(() => {
   border-color: var(--accent);
   color: var(--accent-contrast);
   box-shadow: 0 8px 18px -10px color-mix(in srgb, var(--accent) 70%, transparent);
+}
+
+.skip-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin-top: 14px;
+  padding: 12px 16px;
+  border-radius: 12px;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+}
+
+.skip-copy {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.4;
+}
+
+.skip-copy b {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.skip-copy small {
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.switch-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.switch-row input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.switch {
+  position: relative;
+  width: 36px;
+  height: 21px;
+  border-radius: 999px;
+  background: var(--surface-3);
+  border: 1px solid var(--line-strong);
+  transition: background-color 0.18s;
+}
+
+.switch::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+  transition: transform 0.18s var(--ease);
+}
+
+.switch-row input:checked + .switch {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.switch-row input:checked + .switch::after {
+  transform: translateX(15px);
+}
+
+.switch-row input:focus-visible + .switch {
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.pool-empty {
+  margin-top: 14px;
+  font-size: 12px;
+  color: var(--bad);
+  text-align: center;
 }
 
 .setup-rules {

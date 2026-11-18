@@ -44,6 +44,7 @@ export interface Settings {
   theme: ThemeId
   mode: QuizMode
   shuffle: boolean
+  skipCorrect: boolean
   testCount: number
 }
 

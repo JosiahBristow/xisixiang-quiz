@@ -3,7 +3,7 @@ import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import type { Question } from '../types'
 import { allQuestions, chapterById, sameAnswer, shuffle } from '../lib/bank'
-import { recordAttempt, wrongQuestions } from '../stores/progress'
+import { latestByQuestion, recordAttempt, wrongQuestions } from '../stores/progress'
 import { currentStreak } from '../stores/incentives'
 import { settings } from '../stores/settings'
 import { scheduleSync } from '../lib/sync'
@@ -52,6 +52,18 @@ const isRight = computed(
   () => Boolean(current.value && judged.value && sameAnswer(selected.value, current.value.answer)),
 )
 
+const skipActive = computed(() => settings.skipCorrect && scope.value !== 'wrong')
+
+const scopeTotal = computed(() => {
+  if (scope.value === 'all') return allQuestions.length
+  if (scope.value === 'wrong') return wrongQuestions.value.length
+  return chapterById.get(scope.value)?.questions.length ?? 0
+})
+
+const emptyBecauseSkip = computed(
+  () => skipActive.value && questions.value.length === 0 && scopeTotal.value > 0,
+)
+
 const feedbackTone = computed(() => {
   if (mode.value === 'recite') return 'neutral'
   return isRight.value ? 'ok' : 'bad'
@@ -69,6 +81,9 @@ function build() {
   else {
     const ch = chapterById.get(scope.value)
     list = ch ? [...ch.questions] : []
+  }
+  if (skipActive.value) {
+    list = list.filter((q) => latestByQuestion.value.get(q.id)?.correct !== true)
   }
   if (settings.shuffle) list = shuffle(list)
   questions.value = list
@@ -147,6 +162,12 @@ function finish() {
 }
 
 function restart() {
+  build()
+  window.scrollTo({ top: 0, behavior: 'smooth' })
+}
+
+function retryWithAll() {
+  settings.skipCorrect = false
   build()
   window.scrollTo({ top: 0, behavior: 'smooth' })
 }
@@ -276,6 +297,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
                   <i v-for="n in 3" :key="n" :class="{ on: n <= current.difficulty }" />
                 </span>
               </span>
+              <span v-if="skipActive" class="badge">仅未答对</span>
               <span v-if="current.topic" class="badge q-topic">{{ current.topic }}</span>
             </div>
             <span class="q-no serif">No.{{ String(index + 1).padStart(2, '0') }}</span>
@@ -369,10 +391,27 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
       </template>
 
       <section v-else class="empty card">
-        <div class="empty-mark serif">{{ scope === 'wrong' ? '空' : '?' }}</div>
-        <h2>{{ scope === 'wrong' ? '错题本是空的' : '没有找到题目' }}</h2>
-        <p>{{ scope === 'wrong' ? '继续保持！答错的题会自动收集到这里。' : '题库数据可能未生成，请运行 npm run parse 后刷新。' }}</p>
-        <button class="btn btn-primary" @click="router.push('/')">回到题库</button>
+        <div class="empty-mark serif">{{ scope === 'wrong' ? '空' : emptyBecauseSkip ? '满' : '?' }}</div>
+        <h2>
+          {{ scope === 'wrong' ? '错题本是空的' : emptyBecauseSkip ? '这一组已经全部答对了' : '没有找到题目' }}
+        </h2>
+        <p>
+          {{
+            scope === 'wrong'
+              ? '继续保持！答错的题会自动收集到这里。'
+              : emptyBecauseSkip
+                ? '开启「跳过已答对」后没有剩余题目，可以关闭它重新刷一遍。'
+                : '题库数据可能未生成，请运行 npm run parse 后刷新。'
+          }}
+        </p>
+        <div class="empty-actions">
+          <button v-if="emptyBecauseSkip" class="btn btn-primary" @click="retryWithAll">
+            关闭跳过并重刷
+          </button>
+          <button class="btn" :class="emptyBecauseSkip ? 'btn-ghost' : 'btn-primary'" @click="router.push('/')">
+            回到题库
+          </button>
+        </div>
       </section>
     </div>
   </main>
@@ -881,6 +920,13 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
   max-width: 380px;
   font-size: 13.5px;
   color: var(--text-2);
+}
+
+.empty-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
 }
 
 /* ---------- 响应式 ---------- */

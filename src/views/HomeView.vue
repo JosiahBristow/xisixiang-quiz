@@ -173,11 +173,18 @@ function scrollToChapters() {
             <h2>按章节刷题</h2>
             <p>{{ doneChapters }} / {{ bank.chapters.length }} 章已开始</p>
           </div>
-          <label class="switch-row">
-            <input v-model="settings.shuffle" type="checkbox" />
-            <span class="switch" />
-            随机顺序
-          </label>
+          <div class="sec-toggles">
+            <label class="switch-row" title="开启后只刷还没答对的题">
+              <input v-model="settings.skipCorrect" type="checkbox" />
+              <span class="switch" />
+              跳过已答对
+            </label>
+            <label class="switch-row">
+              <input v-model="settings.shuffle" type="checkbox" />
+              <span class="switch" />
+              随机顺序
+            </label>
+          </div>
         </header>
 
         <div class="chapter-grid">
@@ -641,10 +648,18 @@ h1 {
 
 .sec-head {
   display: flex;
+  flex-wrap: wrap;
   align-items: flex-end;
   justify-content: space-between;
-  gap: 16px;
+  gap: 10px 16px;
   margin-bottom: 16px;
+}
+
+.sec-toggles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  justify-content: flex-end;
 }
 
 .sec-head h2 {
