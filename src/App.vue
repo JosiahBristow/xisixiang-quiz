@@ -3,6 +3,7 @@ import { onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import AppHeader from './components/AppHeader.vue'
 import AuthModal from './components/AuthModal.vue'
+import AchievementToast from './components/AchievementToast.vue'
 import { initAuth } from './stores/auth'
 import { ui } from './stores/ui'
 import { startAutoSync } from './lib/sync'
@@ -23,4 +24,5 @@ onMounted(async () => {
     </transition>
   </router-view>
   <AuthModal v-if="ui.authOpen" @close="ui.authOpen = false" />
+  <AchievementToast />
 </template>

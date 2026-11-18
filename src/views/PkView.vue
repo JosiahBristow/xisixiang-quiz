@@ -8,6 +8,7 @@ import { pickCorrect, pointsFor, seededQuestions } from '../lib/pk'
 import { hasSupabase, supabase } from '../lib/supabase'
 import { auth } from '../stores/auth'
 import { ui } from '../stores/ui'
+import { refreshPkStats } from '../stores/pkStats'
 import MarqueeText from '../components/MarqueeText.vue'
 
 const route = useRoute()
@@ -555,6 +556,7 @@ async function reportResult(walkover: boolean) {
     p_opp_score: oppScore.value,
     p_walkover: walkover,
   })
+  refreshPkStats()
 }
 
 function walkoverEnd() {

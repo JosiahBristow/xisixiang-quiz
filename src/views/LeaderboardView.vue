@@ -20,19 +20,33 @@ interface PkRow {
   is_me: boolean
 }
 
-type TabId = 'total' | 'chapter' | 'week' | 'pk'
+interface PointsRow {
+  rank: number
+  user_id: string
+  nickname: string
+  points: number
+  correct: number
+  days: number
+  wins: number
+  max_streak: number
+  is_me: boolean
+}
+
+type TabId = 'total' | 'chapter' | 'week' | 'pk' | 'points'
 
 const tabs: { id: TabId; label: string; hint: string }[] = [
   { id: 'total', label: '总榜', hint: '按已刷题目数排名，同数量看正确率' },
   { id: 'chapter', label: '章节榜', hint: '该章刷过一半以上才能入榜，按正确率排名' },
   { id: 'week', label: '周榜', hint: '每周一 0 点（北京时间）重新开始，统计本周答题数' },
   { id: 'pk', label: 'PK 榜', hint: '按联机 PK 胜场排名，同胜场看胜率' },
+  { id: 'points', label: '积分榜', hint: '答对一题 +10 · PK 获胜 +80 · 活跃一天 +20' },
 ]
 
 const tab = ref<TabId>('total')
 const chapterId = ref('ch1')
 const rows = ref<LeaderboardRow[]>([])
 const pkRows = ref<PkRow[]>([])
+const pointsRows = ref<PointsRow[]>([])
 const loading = ref(false)
 const error = ref('')
 const loadedOnce = ref(false)
@@ -40,6 +54,7 @@ const loadedOnce = ref(false)
 const hint = computed(() => tabs.find((t) => t.id === tab.value)?.hint ?? '')
 const myRow = computed(() => rows.value.find((r) => r.is_me))
 const myPkRow = computed(() => pkRows.value.find((r) => r.is_me))
+const myPointsRow = computed(() => pointsRows.value.find((r) => r.is_me))
 const currentChapter = computed(() => chapterById.get(chapterId.value))
 
 async function load() {
@@ -47,6 +62,25 @@ async function load() {
   loading.value = true
   error.value = ''
   try {
+    if (tab.value === 'points') {
+      const response = await supabase.rpc('lb_points', { p_limit: 50 })
+      if (response.error) throw response.error
+      pointsRows.value = ((response.data ?? []) as Record<string, unknown>[]).map((r) => ({
+        rank: Number(r.rank),
+        user_id: String(r.user_id),
+        nickname: String(r.nickname ?? '匿名同学'),
+        points: Number(r.points),
+        correct: Number(r.correct),
+        days: Number(r.days),
+        wins: Number(r.wins),
+        max_streak: Number(r.max_streak),
+        is_me: Boolean(r.is_me),
+      }))
+      rows.value = []
+      pkRows.value = []
+      return
+    }
+
     if (tab.value === 'pk') {
       const response = await supabase.rpc('lb_pk', { p_limit: 50 })
       if (response.error) throw response.error
@@ -62,10 +96,12 @@ async function load() {
         is_me: Boolean(r.is_me),
       }))
       rows.value = []
+      pointsRows.value = []
       return
     }
 
     pkRows.value = []
+    pointsRows.value = []
     let response
     if (tab.value === 'total') {
       response = await supabase.rpc('lb_total', { p_limit: 50 })
@@ -96,6 +132,7 @@ async function load() {
       : '排行榜加载失败，请稍后重试。'
     rows.value = []
     pkRows.value = []
+    pointsRows.value = []
   } finally {
     loading.value = false
     loadedOnce.value = true
@@ -151,8 +188,8 @@ onMounted(load)
           <div class="board-head">
             <span class="col-rank">名次</span>
             <span class="col-user">同学</span>
-            <span class="col-done">{{ tab === 'pk' ? '胜 / 场' : tab === 'week' ? '本周答题' : '已刷题数' }}</span>
-            <span class="col-acc">{{ tab === 'pk' ? '胜率' : '正确率' }}</span>
+            <span class="col-done">{{ tab === 'points' ? '答对' : tab === 'pk' ? '胜 / 场' : tab === 'week' ? '本周答题' : '已刷题数' }}</span>
+            <span class="col-acc">{{ tab === 'points' ? '积分' : tab === 'pk' ? '胜率' : '正确率' }}</span>
           </div>
 
           <div v-if="loading && !loadedOnce" class="sk-rows">
@@ -191,6 +228,26 @@ onMounted(load)
             </ul>
           </template>
 
+          <template v-else-if="tab === 'points'">
+            <div v-if="!pointsRows.length" class="board-msg">
+              <div class="empty-mark serif">分</div>
+              <p>还没有人获得积分，答几道题就能占榜。</p>
+            </div>
+            <ul v-else class="rows">
+              <li v-for="row in pointsRows" :key="row.user_id" class="row" :class="{ me: row.is_me }">
+                <span class="rank" :class="row.rank <= 3 ? 'r' + row.rank : ''">{{ row.rank }}</span>
+                <span class="user">
+                  <span class="av">{{ row.nickname.slice(0, 1) }}</span>
+                  <MarqueeText :text="row.nickname" class="user-name" />
+                  <span v-if="row.is_me" class="me-tag">我</span>
+                  <span v-if="row.max_streak >= 5" class="streak-tag">最长 {{ row.max_streak }} 连</span>
+                </span>
+                <span class="done">{{ row.correct }}</span>
+                <span class="acc points">{{ row.points }}</span>
+              </li>
+            </ul>
+          </template>
+
           <template v-else>
             <div v-if="!rows.length" class="board-msg">
               <div class="empty-mark serif">榜</div>
@@ -213,8 +270,18 @@ onMounted(load)
           </template>
         </section>
 
-        <section class="my card" :class="{ empty: tab === 'pk' ? !myPkRow : !myRow }">
-          <template v-if="auth.user && tab === 'pk' && myPkRow">
+        <section class="my card" :class="{ empty: tab === 'pk' ? !myPkRow : tab === 'points' ? !myPointsRow : !myRow }">
+          <template v-if="auth.user && tab === 'points' && myPointsRow">
+            <span class="my-label">我的积分名次</span>
+            <b class="my-rank serif">第 {{ myPointsRow.rank }} 名</b>
+            <span class="my-detail">{{ myPointsRow.points }} 积分 · 答对 {{ myPointsRow.correct }} 题</span>
+          </template>
+          <template v-else-if="auth.user && tab === 'points'">
+            <span class="my-label">我的积分名次</span>
+            <b class="my-rank serif">还没有积分</b>
+            <span class="my-detail">答几道题就能上榜</span>
+          </template>
+          <template v-else-if="auth.user && tab === 'pk' && myPkRow">
             <span class="my-label">我的 PK 名次</span>
             <b class="my-rank serif">第 {{ myPkRow.rank }} 名</b>
             <span class="my-detail">{{ myPkRow.wins }} 胜 / {{ myPkRow.games }} 场 · 胜率 {{ myPkRow.winrate }}%</span>
@@ -247,6 +314,7 @@ onMounted(load)
           <li><b>章节榜</b> · 该章刷过一半以上题目才能入榜，按正确率排序</li>
           <li><b>周榜</b> · 每周一 0 点（北京时间）重新统计</li>
           <li><b>PK 榜</b> · 按联机对战胜场排序，同胜场看胜率</li>
+          <li><b>积分榜</b> · 答对一题 +10（每题只计一次）、PK 获胜 +80、活跃一天 +20</li>
           <li>排名基于登录账号的记录，未登录时只在本机保存进度</li>
         </ul>
       </template>
@@ -490,6 +558,11 @@ onMounted(load)
 .acc.low {
   background: var(--bad-soft);
   color: var(--bad);
+}
+
+.acc.points {
+  background: var(--accent-soft);
+  color: var(--accent);
 }
 
 .sk-rows {

@@ -8,6 +8,7 @@
 - **485 道题 / 18 个章节**（单选 249、多选 236），由根目录 Word 题库自动解析生成
 - **随机测试**：自选抽题数量，答题时答案全部隐藏，交卷后统一公布并逐题回顾
 - **联机对战**：房间码 / 快速匹配实时 PK，正确+速度计分，胜负计入 PK 榜
+- **积分与成就**：答对 +10、PK 获胜 +80、活跃日 +20；12 枚徽章、等级称号、连击提示
 - 纯静态站点（Vue 3 + Vite），可直接部署到 GitHub Pages
 - Supabase 提供邮箱登录、作答记录云同步与总榜 / 章节榜 / 周榜
 - 深色、浅色、护眼、墨蓝四套主题，手机 / 电脑自适应
@@ -38,8 +39,9 @@ npm run preview
 ## 一、配置 Supabase
 
 1. 到 [supabase.com](https://supabase.com) 新建一个免费项目（Region 建议 Singapore / East Asia）。
-2. 打开 **SQL Editor**，依次执行 [`supabase/migrations/0001_init.sql`](supabase/migrations/0001_init.sql)
-   和 [`supabase/migrations/0002_pk.sql`](supabase/migrations/0002_pk.sql)
+2. 打开 **SQL Editor**，依次执行 [`supabase/migrations/0001_init.sql`](supabase/migrations/0001_init.sql)、
+   [`supabase/migrations/0002_pk.sql`](supabase/migrations/0002_pk.sql)、
+   [`supabase/migrations/0004_incentives.sql`](supabase/migrations/0004_incentives.sql)
    （脚本幂等，可重复执行）。0001 会创建：
    - `profiles`：昵称（注册时自动生成）
    - `attempts`：逐题作答记录（进度 / 错题本 / 排行榜的数据源）
@@ -48,6 +50,8 @@ npm run preview
 
    0002 会创建联机对战所需的 `pk_rooms` / `pk_queue` / `pk_results` 表、
    房间与匹配相关 RPC，以及 `lb_pk` 胜负榜函数。
+
+   0004 只新增 `lb_points` 积分榜函数；积分与成就本身由作答记录实时推导，不占用新表。
 3. 进入 **Authentication → Providers → Email**，关闭 **Confirm email**
    （自己人使用，注册后可立即登录；开着的话需要先点邮件里的确认链接）。
 4. 进入 **Project Settings → API**，复制 **Project URL** 和 **anon public key**，写入项目根目录 `.env`：
@@ -113,7 +117,16 @@ git push -u origin main
 
 > 题目与答案仍打包在前端，联机频道只同步作答事件，整体是按朋友娱乐的标准设计的。
 
-## 五、排行榜规则
+## 五、积分与成就
+
+- **积分**：答对一题 +10（同一道题只计一次）、PK 获胜 +80、当日活跃 +20。
+  积分用于「积分榜」排名与个人等级（童生 → 秀才 → 举人 → 贡士 → 进士 → 翰林 → 大学士）。
+- **连击**：连续答对题数，答错归零；答题页会即时提示「连对 ×N」。
+- **成就**：共 12 枚徽章，覆盖首答、连击、答对题量、单章正确率、连续打卡、全勤周与 PK 胜场；
+  达成时全局弹出解锁提示，个人中心可查看徽章墙与最近 7 天答题曲线。
+- 未登录时积分与徽章按本机记录计算；登录后随作答记录自动同步，积分榜只统计登录账号。
+
+## 六、排行榜规则
 
 | 榜单 | 统计口径 |
 | --- | --- |
@@ -121,6 +134,7 @@ git push -u origin main
 | 章节榜 | 该章刷过一半以上题目才入榜，按正确率排序 |
 | 周榜 | 每周一 0 点（北京时间）重新开始，统计本周答题数 |
 | PK 榜 | 按联机对战胜场排序，同胜场看胜率，额外显示当前连胜 |
+| 积分榜 | 按积分排序，积分 = 答对题数 ×10 + PK 胜场 ×80 + 活跃天数 ×20 |
 
 - 正确率按「每道题最近一次作答」计算，同一道题反复刷不会刷高题数。
 - 榜单对未登录访客可见；登录后能看到「我的名次」。
@@ -129,14 +143,14 @@ git push -u origin main
 
 ---
 
-## 六、项目结构
+## 七、项目结构
 
 ```
 习思想题库更新版/          Word 题库（数据源，构建时解析）
 scripts/parse-bank.mjs      docx → JSON 解析与校验
 src/
   data/questions.json      解析产物（自动生成，可提交）
-  views/                   首页 / 刷题页 / 随机测试 / 联机对战 / 排行榜
+  views/                   首页 / 刷题页 / 随机测试 / 联机对战 / 排行榜 / 我的成就
   components/              头部、主题切换、登录弹窗
   stores/                  设置、进度（localStorage）、认证
   lib/                     Supabase 客户端、云同步、题库查询

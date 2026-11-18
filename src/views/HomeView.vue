@@ -2,7 +2,9 @@
 import { computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { bank } from '../lib/bank'
+import { BADGES } from '../lib/incentives'
 import { chapterStats, overall, wrongQuestions } from '../stores/progress'
+import { stats as inc, unlockedCount } from '../stores/incentives'
 import { settings } from '../stores/settings'
 import { hasSupabase } from '../lib/supabase'
 
@@ -104,6 +106,27 @@ function scrollToChapters() {
             </div>
           </div>
         </div>
+      </section>
+
+      <section class="today card">
+        <div class="td-main">
+          <div class="td-head">
+            <span class="badge badge-accent">{{ inc.level.name }}</span>
+            <b class="serif">{{ inc.points }}<small>积分</small></b>
+          </div>
+          <div class="td-stats">
+            <div class="td-stat"><b class="serif">{{ inc.todayCount }}</b><span>今日答题</span></div>
+            <div class="td-stat"><b class="serif">{{ inc.currentStreak }}</b><span>当前连对</span></div>
+            <div class="td-stat"><b class="serif">{{ inc.dayStreak }}</b><span>连续打卡</span></div>
+            <div class="td-stat"><b class="serif">{{ unlockedCount }}/{{ BADGES.length }}</b><span>成就</span></div>
+          </div>
+        </div>
+        <router-link to="/me" class="td-link">
+          我的成就
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M5 12h14m0 0-6-6m6 6-6 6" />
+          </svg>
+        </router-link>
       </section>
 
       <section class="test-entry card">
@@ -386,6 +409,90 @@ h1 {
   color: var(--muted);
   letter-spacing: 0.05em;
   white-space: nowrap;
+}
+
+/* ---------- 今日战报 ---------- */
+.today {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  margin-top: 16px;
+  padding: 13px 20px;
+  animation: rise 0.5s 0.03s var(--ease) both;
+}
+
+.td-main {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  min-width: 0;
+  flex: 1;
+}
+
+.td-head {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.td-head b {
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.td-head b small {
+  margin-left: 3px;
+  font-size: 10.5px;
+  font-weight: 500;
+  color: var(--muted);
+}
+
+.td-stats {
+  display: flex;
+  flex: 1;
+  gap: 28px;
+}
+
+.td-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.td-stat b {
+  font-size: 17px;
+  font-weight: 700;
+  line-height: 1.15;
+  font-variant-numeric: tabular-nums;
+}
+
+.td-stat span {
+  font-size: 10.5px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.td-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  flex-shrink: 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--accent);
+  transition: opacity 0.15s;
+}
+
+.td-link:hover {
+  opacity: 0.75;
+}
+
+.td-link svg {
+  width: 14px;
+  height: 14px;
 }
 
 /* ---------- 随机测试入口 ---------- */
@@ -805,6 +912,28 @@ h1 {
 
   .wb-text small {
     display: none;
+  }
+
+  .today {
+    flex-wrap: wrap;
+    gap: 10px;
+    padding: 13px 15px;
+  }
+
+  .td-main {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  .td-stats {
+    width: 100%;
+    justify-content: space-between;
+    gap: 10px;
+  }
+
+  .td-link {
+    margin-left: auto;
   }
 
   .test-entry {

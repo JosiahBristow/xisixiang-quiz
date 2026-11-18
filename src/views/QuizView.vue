@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 import type { Question } from '../types'
 import { allQuestions, chapterById, sameAnswer, shuffle } from '../lib/bank'
 import { recordAttempt, wrongQuestions } from '../stores/progress'
+import { currentStreak } from '../stores/incentives'
 import { settings } from '../stores/settings'
 import { scheduleSync } from '../lib/sync'
 
@@ -24,6 +25,8 @@ const session = ref<Record<string, boolean>>({})
 const viewState = ref<Record<number, { selected: string[]; judged: boolean }>>({})
 const startedAt = ref(Date.now())
 const elapsedMs = ref(0)
+const judgeIndex = ref(-1)
+const prevStreak = ref(0)
 
 const total = computed(() => questions.value.length)
 const current = computed<Question | undefined>(() => questions.value[index.value])
@@ -106,6 +109,8 @@ function pick(key: string) {
 function judge() {
   const q = current.value
   if (!q || judged.value || !selected.value.length) return
+  judgeIndex.value = index.value
+  prevStreak.value = currentStreak.value
   judged.value = true
   const ok = sameAnswer(selected.value, q.answer)
   session.value = { ...session.value, [q.id]: ok }
@@ -325,6 +330,19 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
             <div class="fb-line">
               <b>{{ mode === 'recite' ? '参考答案' : isRight ? '回答正确' : '回答错误' }}</b>
               <span>正确答案：{{ current.answer.join(' ') }}</span>
+              <span
+                v-if="judgeIndex === index && mode === 'practice' && isRight && currentStreak >= 2"
+                class="streak-chip"
+                :class="{ hot: currentStreak >= 5 }"
+              >
+                连对 ×{{ currentStreak }}
+              </span>
+              <span
+                v-else-if="judgeIndex === index && mode === 'practice' && !isRight && prevStreak >= 2"
+                class="streak-chip lost"
+              >
+                连击中断
+              </span>
             </div>
             <p v-if="current.topic" class="fb-topic">知识点：{{ current.topic }}</p>
           </div>
@@ -660,6 +678,47 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
   font-size: 12px;
   opacity: 0.78;
   line-height: 1.6;
+}
+
+.streak-chip {
+  display: inline-flex;
+  align-items: center;
+  height: 22px;
+  padding: 0 9px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  border: 1px solid var(--accent-line);
+  color: var(--accent);
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  animation: chip-pop 0.35s var(--ease) both;
+}
+
+.streak-chip.hot {
+  background: linear-gradient(135deg, #f8efd8, #ecd28a);
+  border-color: #d9b96a;
+  color: #7a5a10;
+}
+
+.streak-chip.lost {
+  background: var(--surface-2);
+  border-color: var(--line);
+  color: var(--muted);
+}
+
+@keyframes chip-pop {
+  0% {
+    transform: scale(0.7);
+    opacity: 0;
+  }
+  60% {
+    transform: scale(1.06);
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
 }
 
 /* ---------- 操作区 ---------- */
