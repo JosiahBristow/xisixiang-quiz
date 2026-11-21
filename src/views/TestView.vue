@@ -3,6 +3,7 @@ import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import type { Question } from '../types'
 import { allQuestions, questionById, sameAnswer, shuffle } from '../lib/bank'
+import { isFavorite, toggleFavorite } from '../stores/favorites'
 import { latestByQuestion, recordAttempts } from '../stores/progress'
 import { settings } from '../stores/settings'
 import { scheduleSync } from '../lib/sync'
@@ -442,7 +443,25 @@ onBeforeUnmount(() => {
                 </span>
               </span>
             </div>
-            <span class="q-no serif">No.{{ String(index + 1).padStart(2, '0') }}</span>
+            <div class="q-head-right">
+              <button
+                class="fav-toggle"
+                :class="{ on: isFavorite(current.id) }"
+                :title="isFavorite(current.id) ? '取消收藏' : '收藏题目'"
+                @click="toggleFavorite(current.id)"
+              >
+                <svg
+                  viewBox="0 0 24 24"
+                  :fill="isFavorite(current.id) ? 'currentColor' : 'none'"
+                  stroke="currentColor"
+                  stroke-width="1.7"
+                  stroke-linejoin="round"
+                >
+                  <path d="m12 3 2.7 5.7 6.3.8-4.6 4.3 1.2 6.2-5.6-3-5.6 3 1.2-6.2L3 9.5l6.3-.8L12 3Z" />
+                </svg>
+              </button>
+              <span class="q-no serif">No.{{ String(index + 1).padStart(2, '0') }}</span>
+            </div>
           </header>
 
           <h2 class="stem">{{ current.stem }}</h2>
@@ -997,8 +1016,43 @@ onBeforeUnmount(() => {
   background: var(--gold);
 }
 
-.q-no {
+.q-head-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   margin-left: auto;
+  flex-shrink: 0;
+}
+
+.q-head-right .q-no {
+  margin-left: 0;
+}
+
+.fav-toggle {
+  display: inline-grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  color: var(--muted);
+  transition: color 0.15s, background-color 0.15s;
+}
+
+.fav-toggle:hover {
+  background: var(--surface-2);
+  color: var(--gold);
+}
+
+.fav-toggle.on {
+  color: var(--gold);
+}
+
+.fav-toggle svg {
+  width: 19px;
+  height: 19px;
+}
+
+.q-no {
   flex-shrink: 0;
   font-size: 15px;
   font-weight: 700;

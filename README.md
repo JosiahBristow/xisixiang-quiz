@@ -12,6 +12,7 @@
 - **自定义头像**：上传后自动居中裁剪压缩到 256×256，显示在导航、排行榜、PK 与个人中心
 - **积分商城**：可用积分解锁 3 套主题与 3 枚荣誉徽章，徽章可佩戴展示在排行榜
 - **跳过已答对**：默认开启，练习与随机测试只刷还没做对的题，避免重复劳动
+- **收藏夹**：刷题时一键收藏，独立收藏页回看或只刷收藏题，登录后云端同步
 - **留言板**：登录可发帖 / 回复 / 点赞，支持 Markdown 编辑与实时预览，管理员可置顶、隐藏、删除
 - 纯静态站点（Vue 3 + Vite），可直接部署到 GitHub Pages
 - Supabase 提供邮箱登录、作答记录云同步与总榜 / 章节榜 / 周榜
@@ -50,7 +51,8 @@ npm run preview
    [`supabase/migrations/0006_avatars.sql`](supabase/migrations/0006_avatars.sql)、
    [`supabase/migrations/0007_rewards.sql`](supabase/migrations/0007_rewards.sql)、
    [`supabase/migrations/0008_points_balance.sql`](supabase/migrations/0008_points_balance.sql)、
-   [`supabase/migrations/0009_board.sql`](supabase/migrations/0009_board.sql)
+   [`supabase/migrations/0009_board.sql`](supabase/migrations/0009_board.sql)、
+   [`supabase/migrations/0010_favorites.sql`](supabase/migrations/0010_favorites.sql)
    （脚本幂等，可重复执行）。0001 会创建：
    - `profiles`：昵称（注册时自动生成）
    - `attempts`：逐题作答记录（进度 / 错题本 / 排行榜的数据源）
@@ -75,6 +77,8 @@ npm run preview
 
    0009 创建留言板：`messages` / `message_likes` 表、发帖与点赞 RPC（含 300 字与
    30 秒频率校验）、管理员邮箱判定函数 `is_admin`（默认 `josiah_bristow@outlook.com`）。
+
+   0010 创建收藏夹表 `favorites`（每题一条、按用户隔离）。
 3. 进入 **Authentication → Providers → Email**，关闭 **Confirm email**
    （自己人使用，注册后可立即登录；开着的话需要先点邮件里的确认链接）。
 4. 进入 **Project Settings → API**，复制 **Project URL** 和 **anon public key**，写入项目根目录 `.env`：
@@ -155,7 +159,15 @@ git push -u origin main
   荣誉徽章（青玉 / 流金 / 丹凤）可分别解锁；徽章穿戴后显示在排行榜与个人中心。
   消费会从积分余额中扣除，并同步影响积分榜排名；等级仍按累计获得计算。
 
-## 六、留言板
+## 六、收藏夹
+
+- 练习、背题、随机测试的题目右上角都有星标按钮，点一下即可收藏/取消收藏。
+- 首页「收藏夹」横幅和头像菜单「我的收藏」可进入 `/#/favorites`：回看题目与答案，
+  或点「刷收藏题」进入只含收藏题目的刷题模式（`/quiz/fav`，不受「跳过已答对」影响）。
+- 未登录时保存在本机；登录后自动合并并同步到云端 `favorites` 表，换设备可恢复。
+- 收藏夹页支持单题移除和一键清空。
+
+## 七、留言板
 
 - 入口：导航栏「留言板」或 `/#/board`；游客可浏览，登录后可发帖、回复、点赞。
 - 发帖：话题（讨论 / 吐槽 / 求助 / 建议），每条最多 300 字，同一账号 30 秒内只能发一条。
@@ -166,7 +178,7 @@ git push -u origin main
 - 管理员：默认邮箱 `josiah_bristow@outlook.com`，判定逻辑在 `public.is_admin()`，换人改这一处即可。
 - 留言永久保留，隐藏内容仅管理员可见。
 
-## 七、排行榜规则
+## 八、排行榜规则
 
 | 榜单 | 统计口径 |
 | --- | --- |
@@ -183,14 +195,14 @@ git push -u origin main
 
 ---
 
-## 八、项目结构
+## 九、项目结构
 
 ```
 习思想题库更新版/          Word 题库（数据源，构建时解析）
 scripts/parse-bank.mjs      docx → JSON 解析与校验
 src/
   data/questions.json      解析产物（自动生成，可提交）
-  views/                   首页 / 刷题页 / 随机测试 / 联机对战 / 排行榜 / 我的成就 / 留言板
+  views/                   首页 / 刷题页 / 随机测试 / 联机对战 / 排行榜 / 我的成就 / 留言板 / 收藏夹
   components/              头部、主题切换、登录弹窗
   stores/                  设置、进度（localStorage）、认证
   lib/                     Supabase 客户端、云同步、题库查询

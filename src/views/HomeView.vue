@@ -3,6 +3,7 @@ import { computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { bank } from '../lib/bank'
 import { BADGES } from '../lib/incentives'
+import { favoriteCount } from '../stores/favorites'
 import { chapterStats, overall, wrongQuestions } from '../stores/progress'
 import { stats as inc, unlockedCount } from '../stores/incentives'
 import { balancePoints } from '../stores/rewards'
@@ -165,6 +166,15 @@ function scrollToChapters() {
           <small>答对后自动移出，集中消灭薄弱点</small>
         </span>
         <span class="wb-go">去重刷 →</span>
+      </button>
+
+      <button class="fav-banner card" @click="router.push('/favorites')">
+        <span class="fb-icon serif">★</span>
+        <span class="fb-text">
+          <b>收藏夹{{ favoriteCount ? ` · ${favoriteCount} 道` : '' }}</b>
+          <small>{{ favoriteCount ? '随时回看，或只刷收藏题' : '刷题时点星标，把好题收进来' }}</small>
+        </span>
+        <span class="fb-go">查看 →</span>
       </button>
 
       <section id="chapters" class="chapters">
@@ -638,6 +648,58 @@ h1 {
   font-size: 13px;
   font-weight: 600;
   color: var(--bad);
+}
+
+/* ---------- 收藏夹横幅 ---------- */
+.fav-banner {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  margin-top: 10px;
+  padding: 15px 20px;
+  text-align: left;
+  animation: rise 0.5s 0.06s var(--ease) both;
+}
+
+.fav-banner:hover {
+  border-color: var(--gold);
+}
+
+.fb-icon {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--gold) 14%, var(--surface));
+  color: var(--gold);
+  font-size: 16px;
+}
+
+.fb-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  line-height: 1.4;
+}
+
+.fb-text b {
+  font-size: 14px;
+}
+
+.fb-text small {
+  font-size: 12px;
+  color: var(--text-2);
+}
+
+.fb-go {
+  margin-left: auto;
+  flex-shrink: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--gold);
 }
 
 /* ---------- 章节 ---------- */

@@ -89,6 +89,12 @@ async function logout() {
                   <small>{{ auth.user.email }}</small>
                 </div>
               </div>
+              <router-link to="/favorites" class="menu-item" @click="menuOpen = false">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round">
+                  <path d="m12 3 2.7 5.7 6.3.8-4.6 4.3 1.2 6.2-5.6-3-5.6 3 1.2-6.2L3 9.5l6.3-.8L12 3Z" />
+                </svg>
+                我的收藏
+              </router-link>
               <router-link to="/me" class="menu-item" @click="menuOpen = false">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
                   <path d="M8 4h8v4a4 4 0 0 1-8 0V4Z" />

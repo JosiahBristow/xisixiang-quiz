@@ -2,8 +2,9 @@
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import type { Question } from '../types'
-import { allQuestions, chapterById, sameAnswer, shuffle } from '../lib/bank'
+import { allQuestions, chapterById, questionById, sameAnswer, shuffle } from '../lib/bank'
 import { latestByQuestion, recordAttempt, wrongQuestions } from '../stores/progress'
+import { favorites, isFavorite, toggleFavorite } from '../stores/favorites'
 import { currentStreak } from '../stores/incentives'
 import { settings } from '../stores/settings'
 import { scheduleSync } from '../lib/sync'
@@ -41,6 +42,7 @@ const accuracy = computed(() =>
 const title = computed(() => {
   if (scope.value === 'all') return '全部题目'
   if (scope.value === 'wrong') return '错题本'
+  if (scope.value === 'fav') return '收藏夹'
   return chapterById.get(scope.value)?.title ?? '刷题'
 })
 
@@ -52,11 +54,14 @@ const isRight = computed(
   () => Boolean(current.value && judged.value && sameAnswer(selected.value, current.value.answer)),
 )
 
-const skipActive = computed(() => settings.skipCorrect && scope.value !== 'wrong')
+const skipActive = computed(
+  () => settings.skipCorrect && !['wrong', 'fav'].includes(scope.value),
+)
 
 const scopeTotal = computed(() => {
   if (scope.value === 'all') return allQuestions.length
   if (scope.value === 'wrong') return wrongQuestions.value.length
+  if (scope.value === 'fav') return favorites.value.length
   return chapterById.get(scope.value)?.questions.length ?? 0
 })
 
@@ -78,7 +83,11 @@ function build() {
   let list: Question[] = []
   if (scope.value === 'all') list = [...allQuestions]
   else if (scope.value === 'wrong') list = [...wrongQuestions.value]
-  else {
+  else if (scope.value === 'fav') {
+    list = favorites.value
+      .map((entry) => questionById.get(entry.id))
+      .filter((q): q is Question => Boolean(q))
+  } else {
     const ch = chapterById.get(scope.value)
     list = ch ? [...ch.questions] : []
   }
@@ -300,7 +309,25 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
               <span v-if="skipActive" class="badge">仅未答对</span>
               <span v-if="current.topic" class="badge q-topic">{{ current.topic }}</span>
             </div>
-            <span class="q-no serif">No.{{ String(index + 1).padStart(2, '0') }}</span>
+            <div class="q-head-right">
+              <button
+                class="fav-toggle"
+                :class="{ on: isFavorite(current.id) }"
+                :title="isFavorite(current.id) ? '取消收藏' : '收藏题目'"
+                @click="toggleFavorite(current.id)"
+              >
+                <svg
+                  viewBox="0 0 24 24"
+                  :fill="isFavorite(current.id) ? 'currentColor' : 'none'"
+                  stroke="currentColor"
+                  stroke-width="1.7"
+                  stroke-linejoin="round"
+                >
+                  <path d="m12 3 2.7 5.7 6.3.8-4.6 4.3 1.2 6.2-5.6-3-5.6 3 1.2-6.2L3 9.5l6.3-.8L12 3Z" />
+                </svg>
+              </button>
+              <span class="q-no serif">No.{{ String(index + 1).padStart(2, '0') }}</span>
+            </div>
           </header>
 
           <h2 class="stem">{{ current.stem }}</h2>
@@ -391,17 +418,29 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
       </template>
 
       <section v-else class="empty card">
-        <div class="empty-mark serif">{{ scope === 'wrong' ? '空' : emptyBecauseSkip ? '满' : '?' }}</div>
+        <div class="empty-mark serif">
+          {{ scope === 'wrong' ? '空' : scope === 'fav' ? '★' : emptyBecauseSkip ? '满' : '?' }}
+        </div>
         <h2>
-          {{ scope === 'wrong' ? '错题本是空的' : emptyBecauseSkip ? '这一组已经全部答对了' : '没有找到题目' }}
+          {{
+            scope === 'wrong'
+              ? '错题本是空的'
+              : scope === 'fav'
+                ? '收藏夹是空的'
+                : emptyBecauseSkip
+                  ? '这一组已经全部答对了'
+                  : '没有找到题目'
+          }}
         </h2>
         <p>
           {{
             scope === 'wrong'
               ? '继续保持！答错的题会自动收集到这里。'
-              : emptyBecauseSkip
-                ? '开启「跳过已答对」后没有剩余题目，可以关闭它重新刷一遍。'
-                : '题库数据可能未生成，请运行 npm run parse 后刷新。'
+              : scope === 'fav'
+                ? '在练习、背题或随机测试中点击题目右上角的星标即可收藏。'
+                : emptyBecauseSkip
+                  ? '开启「跳过已答对」后没有剩余题目，可以关闭它重新刷一遍。'
+                  : '题库数据可能未生成，请运行 npm run parse 后刷新。'
           }}
         </p>
         <div class="empty-actions">
@@ -538,8 +577,43 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
   background: var(--gold);
 }
 
-.q-no {
+.q-head-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   margin-left: auto;
+  flex-shrink: 0;
+}
+
+.q-head-right .q-no {
+  margin-left: 0;
+}
+
+.fav-toggle {
+  display: inline-grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  color: var(--muted);
+  transition: color 0.15s, background-color 0.15s;
+}
+
+.fav-toggle:hover {
+  background: var(--surface-2);
+  color: var(--gold);
+}
+
+.fav-toggle.on {
+  color: var(--gold);
+}
+
+.fav-toggle svg {
+  width: 19px;
+  height: 19px;
+}
+
+.q-no {
   flex-shrink: 0;
   font-size: 15px;
   font-weight: 700;
