@@ -50,6 +50,7 @@ async function choose(hit: SearchHit | undefined) {
   if (!hit) return
   q.value = ''
   open.value = false
+  input.value?.blur()
 
   if (hit.kind === 'chapter') {
     requestChapterFocus(hit.chapterId)
