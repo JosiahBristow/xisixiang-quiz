@@ -8,6 +8,14 @@
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23912f2f'/%3E%3Ctext x='32' y='44' font-size='34' text-anchor='middle' fill='%23faf6ee' font-family='serif'%3E习%3C/text%3E%3C/svg%3E" />
   </head>
   <body>
+    <script>
+      // 在 Supabase 客户端解析并清除 URL 之前，先记住这是一次密码重置
+      try {
+        if (location.hash.indexOf('type=recovery') !== -1) {
+          sessionStorage.setItem('qz.recovery', '1')
+        }
+      } catch (e) {}
+    </script>
     <div id="app"></div>
     <script type="module" src="/src/main.ts"></script>
   </body>

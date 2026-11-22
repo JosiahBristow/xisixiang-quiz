@@ -12,6 +12,7 @@ export const auth = reactive({
   equippedBadge: '',
   loading: false,
   avatarLoading: false,
+  recovery: false,
   error: '',
   notice: '',
 })
@@ -27,7 +28,30 @@ function translateError(message: string): string {
   if (m.includes('invalid format')) return '邮箱格式不正确'
   if (m.includes('rate limit')) return '操作太频繁，请稍后再试'
   if (m.includes('signups not allowed')) return '当前项目已关闭注册'
+  if (m.includes('different from the old password')) return '新密码不能与旧密码相同'
+  if (m.includes('for security purposes')) return '操作太频繁，请稍后再试'
+  if (m.includes('auth session missing') || m.includes('invalid') || m.includes('expired')) {
+    return '重置链接已失效，请重新申请找回密码'
+  }
   return message
+}
+
+export function beginRecovery(): void {
+  auth.recovery = true
+  try {
+    sessionStorage.setItem('qz.recovery', '1')
+  } catch {
+    /* ignore */
+  }
+}
+
+export function endRecovery(): void {
+  auth.recovery = false
+  try {
+    sessionStorage.removeItem('qz.recovery')
+  } catch {
+    /* ignore */
+  }
 }
 
 async function ensureProfile(
@@ -84,12 +108,68 @@ export async function initAuth(): Promise<void> {
     auth.ready = true
     return
   }
+  try {
+    if (sessionStorage.getItem('qz.recovery')) auth.recovery = true
+  } catch {
+    /* ignore */
+  }
   const { data } = await supabase.auth.getSession()
   await applyUser(data.session?.user ?? null)
   auth.ready = true
-  supabase.auth.onAuthStateChange((_event, session) => {
+  supabase.auth.onAuthStateChange((event, session) => {
+    if (event === 'PASSWORD_RECOVERY') beginRecovery()
     void applyUser(session?.user ?? null)
   })
+}
+
+function translateResetRequestError(message: string): string {
+  const m = message.toLowerCase()
+  if (m.includes('email_address_invalid') || m.includes('email address')) {
+    return '邮箱地址不可用，请使用真实邮箱'
+  }
+  if (m.includes('rate limit') || m.includes('security purposes')) return '操作太频繁，请稍后再试'
+  if (m.includes('redirect') || m.includes('not allowed')) {
+    return '暂时无法发送重置邮件，请联系管理员检查 Supabase 的站点地址配置'
+  }
+  return '发送失败，请稍后再试'
+}
+
+/** 发送密码重置邮件 */
+export async function requestPasswordReset(email: string): Promise<boolean> {
+  if (!supabase) return false
+  auth.loading = true
+  auth.error = ''
+  auth.notice = ''
+  const redirectTo = `${location.origin}${location.pathname}`
+  let { error } = await supabase.auth.resetPasswordForEmail(email.trim(), { redirectTo })
+  // 站点地址尚未加入 Redirect URLs 时，回退到 Supabase 默认 Site URL
+  if (error && /redirect|not allowed/i.test(error.message)) {
+    const retry = await supabase.auth.resetPasswordForEmail(email.trim())
+    error = retry.error
+  }
+  auth.loading = false
+  if (error) {
+    auth.error = translateResetRequestError(error.message)
+    return false
+  }
+  auth.notice = '如果该邮箱已注册，重置邮件已发送，请查收（也检查一下垃圾箱）。'
+  return true
+}
+
+/** 在密码重置会话中设置新密码 */
+export async function updatePassword(password: string): Promise<boolean> {
+  if (!supabase) return false
+  auth.loading = true
+  auth.error = ''
+  auth.notice = ''
+  const { error } = await supabase.auth.updateUser({ password })
+  auth.loading = false
+  if (error) {
+    auth.error = translateError(error.message)
+    return false
+  }
+  auth.notice = '密码已更新，请使用新密码登录'
+  return true
 }
 
 export async function signIn(email: string, password: string): Promise<boolean> {
@@ -126,6 +206,7 @@ export async function signUp(email: string, password: string): Promise<'in' | 'c
 
 export async function signOut(): Promise<void> {
   if (!supabase) return
+  endRecovery()
   await supabase.auth.signOut()
   auth.user = null
   auth.nickname = ''

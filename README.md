@@ -16,6 +16,7 @@
 - **挖空自测**：隐藏选项、只留题干空位，逐级揭示，避免只记住 ABCD
 - **界面布局**：B站布局（粉色胶囊按钮 / 顶部标签）与抖音布局（暗色霓虹 / 手机底部导航）
 - **留言板**：登录可发帖 / 回复 / 点赞，支持 Markdown 编辑与实时预览，管理员可置顶、隐藏、删除
+- **找回密码**：邮箱接收重置链接，回到站点设置新密码，登录页提供「忘记密码」入口
 - 纯静态站点（Vue 3 + Vite），可直接部署到 GitHub Pages
 - Supabase 提供邮箱登录、作答记录云同步与总榜 / 章节榜 / 周榜
 - 深色、浅色、护眼、墨蓝四套主题，手机 / 电脑自适应
@@ -84,9 +85,13 @@ npm run preview
    0010 创建收藏夹表 `favorites`（每题一条、按用户隔离）。
 
    0011 扩展商城商品类型，加入 B站布局 / 抖音布局两个界面皮肤商品。
-3. 进入 **Authentication → Providers → Email**，关闭 **Confirm email**
+3. 进入 **Authentication → URL Configuration**：
+   - **Site URL** 填线上地址，例如 `https://你的用户名.github.io/仓库名/`
+   - **Redirect URLs** 加入线上地址与本地开发地址（`http://localhost:5173/`、`http://127.0.0.1:5199/`）
+   - 不配置的话「忘记密码」邮件可能无法跳回本站
+4. 进入 **Authentication → Providers → Email**，关闭 **Confirm email**
    （自己人使用，注册后可立即登录；开着的话需要先点邮件里的确认链接）。
-4. 进入 **Project Settings → API**，复制 **Project URL** 和 **anon public key**，写入项目根目录 `.env`：
+5. 进入 **Project Settings → API**，复制 **Project URL** 和 **anon public key**，写入项目根目录 `.env`：
 
 ```env
 VITE_SUPABASE_URL=https://你的项目.supabase.co
@@ -96,6 +101,9 @@ VITE_SUPABASE_ANON_KEY=你的-anon-key
 > anon key 本身就设计为公开，安全性完全由数据库 RLS 保证，不要使用 service_role key。
 
 没有配置 Supabase 时，网站依然可以完整刷题，只是登录、云同步与排行榜不可用。
+
+> 找回密码使用 Supabase 自带的邮件服务，免费额度有发送频率限制；正式给多人使用建议在
+> **Authentication → SMTP Settings** 配置自己的发件邮箱。
 
 ---
 

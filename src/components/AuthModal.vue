@@ -3,10 +3,13 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import {
   auth,
   clearAuthMessages,
+  endRecovery,
+  requestPasswordReset,
   signIn,
   signOut,
   signUp,
   updateNickname,
+  updatePassword,
   uploadAvatar,
 } from '../stores/auth'
 import { attempts, resetLocalProgress } from '../stores/progress'
@@ -28,9 +31,19 @@ const saved = ref(false)
 const avatarInput = ref<HTMLInputElement | null>(null)
 const avatarMsg = ref('')
 const avatarErr = ref(false)
+const forgot = ref(false)
+const newPassword = ref('')
+const confirmPassword = ref('')
+const resetError = ref('')
+const resetDone = ref(false)
 
 const isProfile = computed(() => Boolean(auth.user))
-const title = computed(() => (isProfile.value ? '账号与同步' : tab.value === 'login' ? '登录' : '注册'))
+const title = computed(() => {
+  if (auth.recovery) return '设置新密码'
+  if (isProfile.value) return '账号与同步'
+  if (forgot.value) return '找回密码'
+  return tab.value === 'login' ? '登录' : '注册'
+})
 
 const pendingCount = computed(() => attempts.filter((a) => !a.synced).length)
 
@@ -53,8 +66,74 @@ function timeAgo(iso: string): string {
 
 function switchTab(t: Tab) {
   tab.value = t
+  forgot.value = false
   clearAuthMessages()
   saved.value = false
+}
+
+function startForgot() {
+  forgot.value = true
+  clearAuthMessages()
+  saved.value = false
+}
+
+function backToLogin() {
+  forgot.value = false
+  clearAuthMessages()
+}
+
+async function sendReset() {
+  if (busy.value || !email.value) return
+  busy.value = true
+  clearAuthMessages()
+  await requestPasswordReset(email.value.trim())
+  busy.value = false
+}
+
+async function savePassword() {
+  if (busy.value) return
+  resetError.value = ''
+  if (newPassword.value.length < 6) {
+    resetError.value = '密码至少 6 位'
+    return
+  }
+  if (newPassword.value !== confirmPassword.value) {
+    resetError.value = '两次输入的密码不一致'
+    return
+  }
+  busy.value = true
+  const ok = await updatePassword(newPassword.value)
+  busy.value = false
+  if (!ok) {
+    resetError.value = auth.error || '保存失败，请稍后再试'
+    return
+  }
+  resetDone.value = true
+  setTimeout(() => {
+    endRecovery()
+    resetDone.value = false
+    emit('close')
+  }, 1400)
+}
+
+function finishRecovery() {
+  endRecovery()
+  resetDone.value = false
+  emit('close')
+}
+
+function cancelRecovery() {
+  if (!window.confirm('退出密码重置？')) return
+  finishRecovery()
+}
+
+function close() {
+  if (auth.recovery) {
+    if (!window.confirm('退出密码重置？')) return
+    endRecovery()
+    resetDone.value = false
+  }
+  emit('close')
 }
 
 async function submit() {
@@ -116,7 +195,7 @@ function confirmReset() {
 }
 
 function onKey(e: KeyboardEvent) {
-  if (e.key === 'Escape') emit('close')
+  if (e.key === 'Escape') close()
 }
 
 watch(
@@ -140,9 +219,9 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div class="mask" @click.self="emit('close')">
+  <div class="mask" @click.self="close">
     <div class="modal card" role="dialog" aria-modal="true">
-      <button class="close icon-btn" aria-label="关闭" @click="emit('close')">
+      <button class="close icon-btn" aria-label="关闭" @click="close">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
           <path d="M18 6 6 18M6 6l12 12" />
         </svg>
@@ -150,10 +229,63 @@ onBeforeUnmount(() => {
 
       <header class="m-head">
         <h2>{{ title }}</h2>
-        <p v-if="!isProfile">登录后成绩进入排行榜，刷题进度自动云同步。</p>
+        <p v-if="auth.recovery">请设置至少 6 位的新密码。</p>
+        <p v-else-if="forgot">输入注册邮箱，我们会发送重置链接（约 1 小时有效）。</p>
+        <p v-else-if="!isProfile">登录后成绩进入排行榜，刷题进度自动云同步。</p>
       </header>
 
-      <div v-if="!hasSupabase" class="notice">
+      <template v-if="auth.recovery">
+        <div v-if="!auth.ready" class="notice">正在验证重置链接…</div>
+        <template v-else-if="!auth.user">
+          <div class="notice">重置链接已失效或已过期，请重新申请找回密码。</div>
+          <button class="btn btn-primary btn-block" @click="finishRecovery">返回登录</button>
+        </template>
+        <template v-else>
+          <p class="recovery-email">账号：{{ auth.user.email }}</p>
+          <div v-if="resetDone" class="notice ok">密码已更新，即将关闭…</div>
+          <form v-else class="m-form" @submit.prevent="savePassword">
+            <div class="field">
+              <label for="new-password">新密码</label>
+              <input
+                id="new-password"
+                v-model="newPassword"
+                class="input"
+                type="password"
+                required
+                minlength="6"
+                autocomplete="new-password"
+                placeholder="至少 6 位"
+              />
+            </div>
+            <div class="field">
+              <label for="confirm-password">确认新密码</label>
+              <input
+                id="confirm-password"
+                v-model="confirmPassword"
+                class="input"
+                type="password"
+                required
+                minlength="6"
+                autocomplete="new-password"
+                placeholder="再输入一次"
+              />
+            </div>
+            <p v-if="resetError || auth.error" class="err-text">{{ resetError || auth.error }}</p>
+            <button
+              class="btn btn-primary btn-block"
+              type="submit"
+              :disabled="busy || newPassword.length < 6 || confirmPassword.length < 6"
+            >
+              {{ busy ? '保存中…' : '保存新密码' }}
+            </button>
+            <button type="button" class="btn btn-ghost btn-block" @click="cancelRecovery">
+              取消重置
+            </button>
+          </form>
+        </template>
+      </template>
+
+      <div v-else-if="!hasSupabase" class="notice">
         当前站点还没有配置 Supabase 环境变量，登录与排行榜暂不可用。
       </div>
 
@@ -199,6 +331,30 @@ onBeforeUnmount(() => {
         </div>
       </template>
 
+      <template v-else-if="forgot">
+        <button type="button" class="back-link" @click="backToLogin">← 返回登录</button>
+        <form class="m-form" @submit.prevent="sendReset">
+          <div class="field">
+            <label for="forgot-email">注册邮箱</label>
+            <input
+              id="forgot-email"
+              v-model="email"
+              class="input"
+              type="email"
+              required
+              autocomplete="email"
+              placeholder="you@example.com"
+            />
+          </div>
+          <p v-if="auth.error" class="err-text">{{ auth.error }}</p>
+          <p v-if="auth.notice" class="ok-text">{{ auth.notice }}</p>
+          <button class="btn btn-primary btn-block" type="submit" :disabled="busy || !email">
+            {{ busy ? '发送中…' : '发送重置邮件' }}
+          </button>
+          <p class="tip">长时间未收到请检查垃圾箱；同一邮箱有发送频率限制。</p>
+        </form>
+      </template>
+
       <template v-else>
         <div class="tabs seg">
           <button :class="{ on: tab === 'login' }" @click="switchTab('login')">登录</button>
@@ -231,6 +387,8 @@ onBeforeUnmount(() => {
               placeholder="至少 6 位"
             />
           </div>
+
+          <button type="button" class="forgot-link" @click="startForgot">忘记密码？</button>
 
           <p v-if="auth.error" class="err-text">{{ auth.error }}</p>
           <p v-if="auth.notice" class="ok-text">{{ auth.notice }}</p>
@@ -316,6 +474,42 @@ onBeforeUnmount(() => {
   border: 1px solid var(--bad-line);
   color: var(--bad);
   font-size: 13px;
+  line-height: 1.65;
+}
+
+.notice.ok {
+  background: var(--ok-soft);
+  border-color: var(--ok-line);
+  color: var(--ok);
+}
+
+.recovery-email {
+  margin: 16px 0 12px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.forgot-link {
+  align-self: flex-end;
+  margin-top: -6px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--accent);
+}
+
+.forgot-link:hover {
+  text-decoration: underline;
+}
+
+.back-link {
+  align-self: flex-start;
+  margin-top: 18px;
+  font-size: 12px;
+  color: var(--text-2);
+}
+
+.back-link:hover {
+  color: var(--accent);
 }
 
 .tabs {

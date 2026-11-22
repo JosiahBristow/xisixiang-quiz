@@ -1,15 +1,23 @@
 <script setup lang="ts">
-import { onMounted } from 'vue'
+import { onMounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import AppHeader from './components/AppHeader.vue'
 import AuthModal from './components/AuthModal.vue'
 import AchievementToast from './components/AchievementToast.vue'
 import BottomNav from './components/BottomNav.vue'
-import { initAuth } from './stores/auth'
+import { auth, initAuth } from './stores/auth'
 import { ui } from './stores/ui'
 import { startAutoSync } from './lib/sync'
 
 const route = useRoute()
+
+// 密码重置链接回来时自动打开设置新密码弹窗
+watch(
+  () => auth.recovery,
+  (v) => {
+    if (v) ui.authOpen = true
+  },
+)
 
 onMounted(async () => {
   await initAuth()
