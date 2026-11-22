@@ -5,7 +5,9 @@ import AppHeader from './components/AppHeader.vue'
 import AuthModal from './components/AuthModal.vue'
 import AchievementToast from './components/AchievementToast.vue'
 import BottomNav from './components/BottomNav.vue'
+import SideNav from './components/SideNav.vue'
 import { auth, initAuth } from './stores/auth'
+import { settings } from './stores/settings'
 import { ui } from './stores/ui'
 import { startAutoSync } from './lib/sync'
 
@@ -26,6 +28,7 @@ onMounted(async () => {
 </script>
 
 <template>
+  <SideNav v-if="settings.layout === 'douyin'" />
   <AppHeader />
   <router-view v-slot="{ Component }">
     <transition name="fade" mode="out-in">

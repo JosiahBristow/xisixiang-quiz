@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { bank } from '../lib/bank'
 import { BADGES } from '../lib/incentives'
@@ -9,8 +9,21 @@ import { stats as inc, unlockedCount } from '../stores/incentives'
 import { balancePoints, rewards } from '../stores/rewards'
 import { settings } from '../stores/settings'
 import { hasSupabase } from '../lib/supabase'
+import { pendingChapterFocus } from '../lib/focusChapter'
 
 const router = useRouter()
+
+const biliTab = ref<string>('all')
+
+const biliChapters = computed(() =>
+  biliTab.value === 'all'
+    ? bank.chapters
+    : bank.chapters.filter((ch) => ch.id === biliTab.value),
+)
+
+const visibleChapters = computed(() =>
+  settings.layout === 'bilibili' ? biliChapters.value : bank.chapters,
+)
 
 const CIRCUMFERENCE = 2 * Math.PI * 52
 
@@ -42,6 +55,27 @@ function startTest() {
 function scrollToChapters() {
   document.getElementById('chapters')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
 }
+
+function scrollToToday() {
+  document.getElementById('today')?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+}
+
+function chapterHue(order: number) {
+  return (order * 41 + 330) % 360
+}
+
+function focusPendingChapter() {
+  const id = pendingChapterFocus.value
+  if (!id) return
+  biliTab.value = 'all'
+  void nextTick(() => {
+    document.getElementById(`chapter-${id}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    pendingChapterFocus.value = ''
+  })
+}
+
+watch(pendingChapterFocus, focusPendingChapter, { flush: 'post' })
+onMounted(focusPendingChapter)
 </script>
 
 <template>
@@ -119,7 +153,7 @@ function scrollToChapters() {
         </div>
       </section>
 
-      <section class="today card">
+      <section id="today" class="today card">
         <div class="td-main">
           <div class="td-head">
             <span class="badge badge-accent">{{ inc.level.name }}</span>
@@ -187,6 +221,20 @@ function scrollToChapters() {
       </button>
 
       <section id="chapters" class="chapters">
+        <nav v-if="settings.layout === 'bilibili'" class="bili-tabs" aria-label="章节分区">
+          <button :class="{ on: biliTab === 'all' }" @click="biliTab = 'all'">全部</button>
+          <button class="bili-tab-extra" @click="scrollToToday">动态</button>
+          <router-link to="/leaderboard" class="bili-tab-link">排行</router-link>
+          <button
+            v-for="ch in bank.chapters"
+            :key="ch.id"
+            :class="{ on: biliTab === ch.id }"
+            @click="biliTab = ch.id"
+          >
+            {{ ch.short }}
+          </button>
+        </nav>
+
         <header class="sec-head">
           <div>
             <h2>按章节刷题</h2>
@@ -207,23 +255,38 @@ function scrollToChapters() {
         </header>
 
         <div class="chapter-grid">
-          <button v-for="ch in bank.chapters" :key="ch.id" class="chapter-card card" @click="start(ch.id)">
-            <div class="cc-top">
-              <span class="cc-index serif">{{ String(ch.order).padStart(2, '0') }}</span>
-              <span class="cc-short">{{ ch.short }}</span>
-              <span v-if="statOf(ch.id).done === ch.questions.length" class="badge badge-ok cc-done">已刷完</span>
+          <button
+            v-for="ch in visibleChapters"
+            :id="`chapter-${ch.id}`"
+            :key="ch.id"
+            class="chapter-card card"
+            :style="`--ch-h: ${chapterHue(ch.order)}`"
+            @click="start(ch.id)"
+          >
+            <div class="cc-cover" aria-hidden="true">
+              <span class="cc-cover-no serif">{{ String(ch.order).padStart(2, '0') }}</span>
+              <span class="cc-cover-name">{{ ch.short }}</span>
+              <span class="cc-play">▶</span>
             </div>
-            <h3>{{ ch.name }}</h3>
-            <div class="cc-meta">
-              <span>{{ ch.questions.length }} 题</span>
-              <template v-if="statOf(ch.id).done">
-                <span>已刷 {{ statOf(ch.id).done }}</span>
-                <span>正确率 {{ statOf(ch.id).accuracy }}%</span>
-              </template>
-              <span v-else>未开始</span>
-            </div>
-            <div class="track">
-              <i :style="{ width: pct(ch.id) + '%' }" />
+            <div class="cc-body">
+              <div class="cc-top">
+                <span class="cc-index serif">{{ String(ch.order).padStart(2, '0') }}</span>
+                <span class="cc-short">{{ ch.short }}</span>
+                <span v-if="statOf(ch.id).done === ch.questions.length" class="badge badge-ok cc-done">已刷完</span>
+              </div>
+              <h3>{{ ch.name }}</h3>
+              <div class="cc-meta">
+                <span>{{ ch.questions.length }} 题</span>
+                <template v-if="statOf(ch.id).done">
+                  <span>已刷 {{ statOf(ch.id).done }}</span>
+                  <span>正确率 {{ statOf(ch.id).accuracy }}%</span>
+                </template>
+                <span v-else>未开始</span>
+              </div>
+              <div class="track">
+                <i :style="{ width: pct(ch.id) + '%' }" />
+              </div>
+              <span class="cc-go">开始刷题 <span aria-hidden="true">→</span></span>
             </div>
           </button>
         </div>
@@ -811,6 +874,21 @@ h1 {
   text-align: left;
   transition: transform 0.22s var(--ease), border-color 0.22s, box-shadow 0.22s;
   animation: rise 0.45s var(--ease) both;
+}
+
+.cc-cover {
+  display: none;
+}
+
+.cc-body {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+}
+
+.cc-go {
+  display: none;
 }
 
 .chapter-card:hover {

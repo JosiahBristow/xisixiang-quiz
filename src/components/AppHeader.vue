@@ -1,21 +1,22 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import ThemeSwitcher from './ThemeSwitcher.vue'
+import SearchBox from './SearchBox.vue'
 import MarqueeText from './MarqueeText.vue'
 import UserAvatar from './UserAvatar.vue'
 import RewardBadge from './RewardBadge.vue'
 import { auth, signOut } from '../stores/auth'
+import { settings } from '../stores/settings'
 import { ui } from '../stores/ui'
 import { hasSupabase } from '../lib/supabase'
+import { NAV_ITEMS, isNavActive } from '../lib/navItems'
 
 const route = useRoute()
 const router = useRouter()
 
 const menuOpen = ref(false)
 const userRef = ref<HTMLElement | null>(null)
-
-const onQuiz = computed(() => route.name === 'home' || route.name === 'quiz')
 
 function onDocPointer(e: PointerEvent) {
   if (menuOpen.value && userRef.value && !userRef.value.contains(e.target as Node)) {
@@ -36,10 +37,17 @@ async function logout() {
   await signOut()
   router.push('/')
 }
+
+/** 默认布局保持原有顶栏文案 */
+function defaultNavLabel(item: { name: string; label: string; short: string }) {
+  if (item.name === 'pk') return '对战'
+  if (item.name === 'me') return '成就'
+  return item.label
+}
 </script>
 
 <template>
-  <header class="app-header">
+  <header class="app-header" :class="`layout-${settings.layout}`">
     <div class="wrap head-inner">
       <router-link to="/" class="brand" aria-label="回到首页">
         <span class="seal">习</span>
@@ -49,18 +57,17 @@ async function logout() {
         </span>
       </router-link>
 
-      <nav class="nav">
-        <router-link to="/" :class="{ on: onQuiz }">题库</router-link>
-        <router-link to="/test" :class="{ on: route.name === 'test' }">
-          <span class="nav-long">随机测试</span><span class="nav-short">测试</span>
-        </router-link>
-        <router-link to="/pk" :class="{ on: route.name === 'pk' }">对战</router-link>
-        <router-link to="/board" :class="{ on: route.name === 'board' }">
-          <span class="nav-long">留言板</span><span class="nav-short">留言</span>
-        </router-link>
-        <router-link to="/me" :class="{ on: route.name === 'me' }">成就</router-link>
-        <router-link to="/leaderboard" :class="{ on: route.name === 'leaderboard' }">
-          <span class="nav-long">排行榜</span><span class="nav-short">排行</span>
+      <SearchBox v-if="settings.layout !== 'default'" class="head-search" />
+
+      <nav v-if="settings.layout === 'default'" class="nav nav-main">
+        <router-link
+          v-for="item in NAV_ITEMS"
+          :key="item.to"
+          :to="item.to"
+          :class="{ on: isNavActive(item, route.name) }"
+        >
+          <span class="nav-long">{{ defaultNavLabel(item) }}</span>
+          <span class="nav-short">{{ item.short }}</span>
         </router-link>
       </nav>
 
@@ -119,6 +126,21 @@ async function logout() {
             </div>
           </transition>
         </div>
+      </div>
+    </div>
+
+    <div v-if="settings.layout === 'bilibili'" class="head-sub">
+      <div class="wrap">
+        <nav class="nav nav-sub">
+          <router-link
+            v-for="item in NAV_ITEMS"
+            :key="item.to"
+            :to="item.to"
+            :class="{ on: isNavActive(item, route.name) }"
+          >
+            {{ item.label }}
+          </router-link>
+        </nav>
       </div>
     </div>
   </header>
@@ -435,5 +457,48 @@ async function logout() {
     padding: 0 10px;
     font-size: 12.5px;
   }
+}
+
+/* ---------- 布局皮肤：搜索框与二级导航 ---------- */
+.head-search {
+  flex: 1 1 320px;
+  max-width: 520px;
+  margin-inline: auto;
+}
+
+.head-sub {
+  border-top: 1px solid color-mix(in srgb, var(--line) 70%, transparent);
+  background: color-mix(in srgb, var(--surface) 62%, transparent);
+}
+
+.head-sub .wrap {
+  display: flex;
+  align-items: center;
+}
+
+.nav-sub {
+  height: 44px;
+  gap: 2px;
+  margin-left: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.nav-sub::-webkit-scrollbar {
+  display: none;
+}
+
+.nav-sub a {
+  display: inline-flex;
+  align-items: center;
+  height: 100%;
+  padding: 0 14px;
+  border-radius: 0;
+  white-space: nowrap;
+  font-size: 13.5px;
+}
+
+.nav-sub a:hover {
+  background: transparent;
 }
 </style>

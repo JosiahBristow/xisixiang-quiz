@@ -29,6 +29,7 @@ const startedAt = ref(Date.now())
 const elapsedMs = ref(0)
 const judgeIndex = ref(-1)
 const prevStreak = ref(0)
+let focusConsumed = false
 
 const total = computed(() => questions.value.length)
 const current = computed<Question | undefined>(() => questions.value[index.value])
@@ -115,6 +116,14 @@ function build() {
     list = list.filter((q) => latestByQuestion.value.get(q.id)?.correct !== true)
   }
   if (settings.shuffle) list = shuffle(list)
+
+  const focusId = focusConsumed ? '' : String(route.query.q ?? '')
+  if (focusId) {
+    const focus = questionById.get(focusId)
+    if (focus) list = [focus, ...list.filter((q) => q.id !== focusId)]
+  }
+  focusConsumed = true
+
   questions.value = list
   index.value = 0
   selected.value = []
@@ -301,7 +310,10 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
       </div>
     </div>
 
-    <div class="wrap quiz-body">
+    <div
+      class="wrap quiz-body"
+      :class="{ 'quiz-split': settings.layout === 'bilibili' && current && !finished }"
+    >
       <template v-if="finished">
         <section class="result card">
           <template v-if="mode !== 'recite' && answeredCount">
@@ -353,6 +365,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
       </template>
 
       <template v-else-if="current">
+        <div class="quiz-main">
         <article :key="current.id" class="q-card card">
           <header class="q-head">
             <div class="q-badges">
@@ -511,6 +524,49 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
         <p v-else class="kbd-hint">
           快捷键：<span class="kbd">A</span>–<span class="kbd">D</span> 选择 · <span class="kbd">Enter</span> 确认 / 下一题
         </p>
+        </div>
+
+        <aside v-if="settings.layout === 'bilibili'" class="quiz-side">
+          <div class="qs-card card">
+            <div class="qs-top">
+              <span>答题卡</span>
+              <b>{{ Math.min(index + 1, total) }} / {{ total }}</b>
+            </div>
+
+            <div class="qs-donut" :style="`--p: ${progressPercent}%`">
+              <span>
+                <b class="serif">{{ Math.round(progressPercent) }}</b>
+                <small>%</small>
+              </span>
+            </div>
+
+            <div class="qs-stats">
+              <div><b class="serif">{{ answeredCount }}</b><small>已答</small></div>
+              <div><b class="serif">{{ accuracy }}%</b><small>正确率</small></div>
+              <div><b class="serif">{{ currentStreak }}</b><small>连对</small></div>
+            </div>
+
+            <div class="qs-modes">
+              <span class="qs-label">模式</span>
+              <div class="seg">
+                <button :class="{ on: mode === 'practice' }" @click="setQuizMode('practice')">练习</button>
+                <button :class="{ on: mode === 'recite' }" @click="setQuizMode('recite')">背题</button>
+                <button :class="{ on: mode === 'cloze' }" @click="setQuizMode('cloze')">挖空</button>
+              </div>
+            </div>
+
+            <button
+              class="qs-fav"
+              :class="{ on: current && isFavorite(current.id) }"
+              @click="current && toggleFavorite(current.id)"
+            >
+              <span aria-hidden="true">{{ current && isFavorite(current.id) ? '★' : '☆' }}</span>
+              {{ current && isFavorite(current.id) ? '已收藏' : '收藏本题' }}
+            </button>
+
+            <router-link to="/" class="qs-exit">退出本组</router-link>
+          </div>
+        </aside>
       </template>
 
       <section v-else class="empty card">
@@ -618,6 +674,14 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
 .quiz-body {
   padding-top: 26px;
   max-width: 820px;
+}
+
+.quiz-main {
+  min-width: 0;
+}
+
+.quiz-side {
+  display: none;
 }
 
 /* ---------- 题目卡片 ---------- */

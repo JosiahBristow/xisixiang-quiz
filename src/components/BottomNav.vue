@@ -1,60 +1,18 @@
 <script setup lang="ts">
 import { useRoute } from 'vue-router'
 import { settings } from '../stores/settings'
+import { NAV_ITEMS, isNavActive } from '../lib/navItems'
 
 const route = useRoute()
-
-const items = [
-  {
-    to: '/',
-    name: 'home',
-    label: '题库',
-    icon: '<path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v16H6.5A2.5 2.5 0 0 0 4 21.5Z"/><path d="M4 5.5v16"/><path d="M8 7h8M8 11h6"/>',
-  },
-  {
-    to: '/test',
-    name: 'test',
-    label: '测试',
-    icon: '<path d="M4 20h4l10-10a2.8 2.8 0 0 0-4-4L4 16Z"/><path d="m13 6 5 5"/>',
-  },
-  {
-    to: '/pk',
-    name: 'pk',
-    label: '对战',
-    icon: '<path d="M13 2 4 14h6l-1 8 9-12h-6Z"/>',
-  },
-  {
-    to: '/board',
-    name: 'board',
-    label: '留言',
-    icon: '<path d="M21 15a3 3 0 0 1-3 3H8l-5 3V6a3 3 0 0 1 3-3h12a3 3 0 0 1 3 3Z"/>',
-  },
-  {
-    to: '/me',
-    name: 'me',
-    label: '成就',
-    icon: '<path d="M8 4h8v5a4 4 0 0 1-8 0Z"/><path d="M8 5H5v2a3 3 0 0 0 3 3M16 5h3v2a3 3 0 0 1-3 3M12 13v4M9 21h6"/>',
-  },
-  {
-    to: '/leaderboard',
-    name: 'leaderboard',
-    label: '排行',
-    icon: '<path d="M4 20v-6M10 20V8M16 20v-9M22 20H2"/>',
-  },
-]
-
-function isActive(name: string) {
-  return route.name === name || (name === 'home' && route.name === 'quiz')
-}
 </script>
 
 <template>
   <nav v-if="settings.layout === 'douyin'" class="bottom-nav">
     <router-link
-      v-for="item in items"
+      v-for="item in NAV_ITEMS"
       :key="item.to"
       :to="item.to"
-      :class="{ on: isActive(item.name) }"
+      :class="{ on: isNavActive(item, route.name) }"
     >
       <svg
         viewBox="0 0 24 24"
@@ -65,7 +23,7 @@ function isActive(name: string) {
         stroke-linejoin="round"
         v-html="item.icon"
       />
-      <small>{{ item.label }}</small>
+      <small>{{ item.short }}</small>
     </router-link>
   </nav>
 </template>
@@ -108,6 +66,7 @@ function isActive(name: string) {
 .bottom-nav a svg {
   width: 21px;
   height: 21px;
+  transition: transform 0.18s var(--ease), filter 0.18s;
 }
 
 .bottom-nav a small {
@@ -118,6 +77,11 @@ function isActive(name: string) {
 
 .bottom-nav a.on {
   color: #fe2c55;
+}
+
+.bottom-nav a.on svg {
+  transform: translateY(-2px) scale(1.1);
+  filter: drop-shadow(0 0 7px rgba(254, 44, 85, 0.55));
 }
 
 .bottom-nav a.on small {
