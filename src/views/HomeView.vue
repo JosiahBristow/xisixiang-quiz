@@ -70,8 +70,17 @@ function scrollToChapters() {
             <div class="seg">
               <button :class="{ on: settings.mode === 'practice' }" @click="settings.mode = 'practice'">练习模式</button>
               <button :class="{ on: settings.mode === 'recite' }" @click="settings.mode = 'recite'">背题模式</button>
+              <button :class="{ on: settings.mode === 'cloze' }" @click="settings.mode = 'cloze'">挖空模式</button>
             </div>
-            <span class="hm-hint">{{ settings.mode === 'practice' ? '作答后立即判分' : '直接查看正确答案' }}</span>
+            <span class="hm-hint">
+              {{
+                settings.mode === 'practice'
+                  ? '作答后立即判分'
+                  : settings.mode === 'recite'
+                    ? '直接查看正确答案'
+                    : '先回忆，再逐级揭示选项'
+              }}
+            </span>
           </div>
         </div>
 

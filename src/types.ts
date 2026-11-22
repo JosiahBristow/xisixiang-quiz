@@ -38,7 +38,7 @@ export interface Attempt {
 }
 
 export type ThemeId = 'auto' | 'paper' | 'night' | 'bamboo' | 'ink' | 'cinnabar' | 'celadon' | 'nocturne'
-export type QuizMode = 'practice' | 'recite'
+export type QuizMode = 'practice' | 'recite' | 'cloze'
 
 export interface Settings {
   theme: ThemeId

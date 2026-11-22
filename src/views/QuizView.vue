@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import type { Question } from '../types'
+import type { QuizMode, Question } from '../types'
 import { allQuestions, chapterById, questionById, sameAnswer, shuffle } from '../lib/bank'
 import { latestByQuestion, recordAttempt, wrongQuestions } from '../stores/progress'
 import { favorites, isFavorite, toggleFavorite } from '../stores/favorites'
@@ -21,7 +21,8 @@ const index = ref(0)
 const selected = ref<string[]>([])
 const judged = ref(false)
 const finished = ref(false)
-const mode = ref(settings.mode)
+const mode = ref<QuizMode>(settings.mode)
+const clozeStep = ref(0)
 const session = ref<Record<string, boolean>>({})
 const viewState = ref<Record<number, { selected: string[]; judged: boolean }>>({})
 const startedAt = ref(Date.now())
@@ -69,6 +70,25 @@ const emptyBecauseSkip = computed(
   () => skipActive.value && questions.value.length === 0 && scopeTotal.value > 0,
 )
 
+const clozeHidden = computed(
+  () => mode.value === 'cloze' && !judged.value && clozeStep.value < 2,
+)
+
+const stemParts = computed(() => {
+  const stem = current.value?.stem ?? ''
+  const parts: { text: string; blank: boolean }[] = []
+  const re = /_{3,}/g
+  let last = 0
+  let match: RegExpExecArray | null
+  while ((match = re.exec(stem))) {
+    if (match.index > last) parts.push({ text: stem.slice(last, match.index), blank: false })
+    parts.push({ text: match[0], blank: true })
+    last = re.lastIndex
+  }
+  if (last < stem.length) parts.push({ text: stem.slice(last), blank: false })
+  return parts
+})
+
 const feedbackTone = computed(() => {
   if (mode.value === 'recite') return 'neutral'
   return isRight.value ? 'ok' : 'bad'
@@ -104,6 +124,7 @@ function build() {
   viewState.value = {}
   startedAt.value = Date.now()
   elapsedMs.value = 0
+  clozeStep.value = 0
 }
 
 function optionState(key: string): 'idle' | 'selected' | 'correct' | 'wrong' | 'muted' {
@@ -120,6 +141,7 @@ function optionState(key: string): 'idle' | 'selected' | 'correct' | 'wrong' | '
 
 function pick(key: string) {
   if (!current.value || finished.value || judged.value || mode.value === 'recite') return
+  if (clozeHidden.value) return
   if (multi.value) {
     selected.value = selected.value.includes(key)
       ? selected.value.filter((k) => k !== key)
@@ -136,6 +158,7 @@ function judge() {
   judgeIndex.value = index.value
   prevStreak.value = currentStreak.value
   judged.value = true
+  clozeStep.value = 2
   const ok = sameAnswer(selected.value, q.answer)
   session.value = { ...session.value, [q.id]: ok }
   viewState.value[index.value] = { selected: [...selected.value], judged: true }
@@ -149,6 +172,7 @@ function goto(i: number) {
   const st = viewState.value[i]
   selected.value = st ? [...st.selected] : []
   judged.value = st ? st.judged : false
+  clozeStep.value = judged.value ? 2 : 0
   window.scrollTo({ top: 0, behavior: 'smooth' })
 }
 
@@ -181,6 +205,20 @@ function retryWithAll() {
   window.scrollTo({ top: 0, behavior: 'smooth' })
 }
 
+function setQuizMode(next: QuizMode) {
+  mode.value = next
+  settings.mode = next
+  if (next === 'cloze' && !judged.value) {
+    clozeStep.value = 0
+    selected.value = []
+  }
+}
+
+function advanceCloze() {
+  if (mode.value !== 'cloze' || judged.value) return
+  if (clozeStep.value < 2) clozeStep.value += 1
+}
+
 function goWrong() {
   if (scope.value === 'wrong') restart()
   else router.push({ name: 'quiz', params: { scope: 'wrong' } })
@@ -190,6 +228,20 @@ function onKey(e: KeyboardEvent) {
   const el = e.target as HTMLElement | null
   if (el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA')) return
   if (finished.value) return
+
+  if (clozeHidden.value) {
+    if (e.key === 'Enter') {
+      e.preventDefault()
+      advanceCloze()
+    } else if (e.key === 'ArrowRight') {
+      e.preventDefault()
+      next()
+    } else if (e.key === 'ArrowLeft') {
+      e.preventDefault()
+      prev()
+    }
+    return
+  }
 
   const k = e.key.toLowerCase()
   const byLetter: Record<string, number> = { a: 0, b: 1, c: 2, d: 3, e: 4, f: 5 }
@@ -202,7 +254,7 @@ function onKey(e: KeyboardEvent) {
   }
   if (e.key === 'Enter') {
     e.preventDefault()
-    if (!judged.value && multi.value && mode.value === 'practice') judge()
+    if (!judged.value && multi.value && (mode.value === 'practice' || mode.value === 'cloze')) judge()
     else if (judged.value || mode.value === 'recite') next()
     return
   }
@@ -239,8 +291,9 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
           <span v-else>本组完成</span>
         </div>
         <div class="seg qh-mode">
-          <button :class="{ on: mode === 'practice' }" @click="mode = 'practice'">练习</button>
-          <button :class="{ on: mode === 'recite' }" @click="mode = 'recite'">背题</button>
+          <button :class="{ on: mode === 'practice' }" @click="setQuizMode('practice')">练习</button>
+          <button :class="{ on: mode === 'recite' }" @click="setQuizMode('recite')">背题</button>
+          <button :class="{ on: mode === 'cloze' }" @click="setQuizMode('cloze')">挖空</button>
         </div>
       </div>
       <div class="wrap">
@@ -251,7 +304,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
     <div class="wrap quiz-body">
       <template v-if="finished">
         <section class="result card">
-          <template v-if="mode === 'practice' && answeredCount">
+          <template v-if="mode !== 'recite' && answeredCount">
             <div class="result-ring">
               <svg viewBox="0 0 160 160">
                 <circle cx="80" cy="80" r="68" class="rr-track" />
@@ -283,7 +336,11 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
             <div class="result-mark serif">阅</div>
             <h2 class="serif">本组已浏览完</h2>
             <p class="result-sub">
-              背题模式不记录分数。共 {{ total }} 题，切换到「练习」可以检验掌握程度。
+              {{
+                mode === 'recite'
+                  ? '背题模式不记录分数。共 ' + total + ' 题，切换到「练习」可以检验掌握程度。'
+                  : '本组没有作答记录，共 ' + total + ' 题。'
+              }}
             </p>
           </template>
 
@@ -330,9 +387,35 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
             </div>
           </header>
 
-          <h2 class="stem">{{ current.stem }}</h2>
+          <h2 v-if="!clozeHidden" class="stem">{{ current.stem }}</h2>
+          <h2 v-else class="stem">
+            <template v-for="(part, i) in stemParts" :key="i">
+              <button
+                v-if="part.blank"
+                type="button"
+                class="blank"
+                title="点击逐级揭示"
+                @click="advanceCloze"
+              >
+                ?
+              </button>
+              <template v-else>{{ part.text }}</template>
+            </template>
+          </h2>
 
-          <div class="options" role="group" aria-label="选项">
+          <div v-if="clozeHidden" class="cloze-panel">
+            <p v-if="clozeStep === 0">先回忆题干内容，再逐级揭示。</p>
+            <p v-else>
+              本题为{{ multi ? '多选' : '单选' }}题，共 {{ current.options.length }} 个选项，其中
+              {{ current.answer.length }} 个正确。
+            </p>
+            <button class="btn btn-primary btn-sm" @click="advanceCloze">
+              {{ clozeStep === 0 ? '给出结构提示' : '显示选项' }}
+            </button>
+            <small>点击题干空位也可以继续 · Enter 快捷键</small>
+          </div>
+
+          <div v-if="!clozeHidden" class="options" role="group" aria-label="选项">
             <button
               v-for="(opt, i) in current.options"
               :key="i"
@@ -369,7 +452,10 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
             </button>
           </div>
 
-          <div v-if="multi && !judged && mode === 'practice'" class="q-confirm">
+          <div
+            v-if="multi && !judged && (mode === 'practice' || mode === 'cloze')"
+            class="q-confirm"
+          >
             <button class="btn btn-primary btn-block" :disabled="!selected.length" @click="judge">
               确认答案{{ selected.length ? `（已选 ${selected.length} 项）` : '' }}
             </button>
@@ -380,14 +466,14 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
               <b>{{ mode === 'recite' ? '参考答案' : isRight ? '回答正确' : '回答错误' }}</b>
               <span>正确答案：{{ current.answer.join(' ') }}</span>
               <span
-                v-if="judgeIndex === index && mode === 'practice' && isRight && currentStreak >= 2"
+                v-if="judgeIndex === index && mode !== 'recite' && isRight && currentStreak >= 2"
                 class="streak-chip"
                 :class="{ hot: currentStreak >= 5 }"
               >
                 连对 ×{{ currentStreak }}
               </span>
               <span
-                v-else-if="judgeIndex === index && mode === 'practice' && !isRight && prevStreak >= 2"
+                v-else-if="judgeIndex === index && mode !== 'recite' && !isRight && prevStreak >= 2"
                 class="streak-chip lost"
               >
                 连击中断
@@ -398,7 +484,13 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
 
           <footer class="q-actions">
             <button class="btn btn-ghost" :disabled="index === 0" @click="prev">上一题</button>
-            <p v-if="mode === 'practice' && !judged && !multi" class="hint">点击选项即判分</p>
+            <p v-if="clozeHidden" class="hint">点击空位逐步揭示</p>
+            <p
+              v-else-if="(mode === 'practice' || mode === 'cloze') && !judged && !multi"
+              class="hint"
+            >
+              点击选项即判分
+            </p>
             <p v-else-if="mode === 'recite'" class="hint">
               <span class="kbd">←</span> <span class="kbd">→</span> 浏览题目
             </p>
@@ -412,7 +504,11 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
           </footer>
         </article>
 
-        <p class="kbd-hint">
+        <p v-if="clozeHidden" class="kbd-hint">
+          快捷键：<span class="kbd">Enter</span> 逐级揭示 · <span class="kbd">←</span>
+          <span class="kbd">→</span> 切换题目
+        </p>
+        <p v-else class="kbd-hint">
           快捷键：<span class="kbd">A</span>–<span class="kbd">D</span> 选择 · <span class="kbd">Enter</span> 确认 / 下一题
         </p>
       </template>
@@ -627,6 +723,57 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
   line-height: 1.9;
   letter-spacing: 0.01em;
   margin-bottom: 24px;
+}
+
+.blank {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 34px;
+  height: 24px;
+  margin: 0 3px;
+  padding: 0 8px;
+  border-radius: 6px;
+  border: 1px dashed var(--accent-line);
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+  vertical-align: middle;
+  cursor: pointer;
+  transition: background-color 0.15s, transform 0.15s;
+}
+
+.blank:hover {
+  background: color-mix(in srgb, var(--accent) 16%, var(--surface));
+  transform: translateY(-1px);
+}
+
+.cloze-panel {
+  margin: 2px 0 22px;
+  padding: 18px 16px;
+  border-radius: 12px;
+  border: 1px dashed var(--line-strong);
+  background: var(--surface-2);
+  text-align: center;
+}
+
+.cloze-panel p {
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--text-2);
+}
+
+.cloze-panel .btn {
+  margin-top: 12px;
+}
+
+.cloze-panel small {
+  display: block;
+  margin-top: 8px;
+  font-size: 10.5px;
+  color: var(--muted);
 }
 
 /* ---------- 选项 ---------- */
