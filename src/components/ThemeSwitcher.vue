@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import type { RewardItem } from '../lib/rewards'
-import { THEME_REWARDS } from '../lib/rewards'
+import { LAYOUT_REWARDS, THEME_REWARDS } from '../lib/rewards'
 import type { ThemeId } from '../types'
+import type { LayoutId } from '../types'
 import { auth } from '../stores/auth'
 import { balancePoints, isOwned, purchaseReward } from '../stores/rewards'
-import { isDarkTheme, setTheme, settings } from '../stores/settings'
+import { isDarkTheme, setLayout, setTheme, settings } from '../stores/settings'
 import { ui } from '../stores/ui'
 
 interface ThemeOption {
@@ -34,6 +35,16 @@ const premiumThemes: ThemeOption[] = THEME_REWARDS.map((r) => ({
   label: r.name,
   dots: dotsByTheme[r.theme ?? ''] ?? ['#ccc', '#eee', '#999'],
   reward: r,
+}))
+
+const layoutOptions = LAYOUT_REWARDS.map((reward) => ({
+  reward,
+  label: reward.name,
+  layout: reward.layout as LayoutId,
+  dots:
+    reward.layout === 'douyin'
+      ? ['#0b0b0e', '#fe2c55', '#25f4ee']
+      : ['#f6f7f8', '#fb7299', '#00aeec'],
 }))
 
 const open = ref(false)
@@ -65,6 +76,32 @@ async function pick(t: ThemeOption) {
     }
   }
   setTheme(t.id)
+  open.value = false
+}
+
+async function pickLayout(option: (typeof layoutOptions)[number]) {
+  themeMsg.value = ''
+  if (!isOwned(option.reward.id)) {
+    if (!auth.user) {
+      open.value = false
+      ui.authOpen = true
+      return
+    }
+    const short = option.reward.cost - balancePoints.value
+    if (short > 0) {
+      themeMsg.value = `积分不足，还差 ${short} 分`
+      return
+    }
+    if (!window.confirm(`使用 ${option.reward.cost} 积分解锁「${option.label}」？`)) return
+    purchasing.value = true
+    const res = await purchaseReward(option.reward.id)
+    purchasing.value = false
+    if (!res.ok) {
+      themeMsg.value = res.msg ?? '兑换失败，请稍后再试'
+      return
+    }
+  }
+  setLayout(option.layout)
   open.value = false
 }
 
@@ -101,14 +138,14 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', onDocPointer))
           v-for="t in freeThemes"
           :key="t.id"
           class="theme-row"
-          :class="{ on: settings.theme === t.id }"
+          :class="{ on: settings.layout === 'default' && settings.theme === t.id }"
           @click="pick(t)"
         >
           <span class="dots">
             <i v-for="(c, i) in t.dots" :key="i" :style="{ background: c }" />
           </span>
           <span class="t-label">{{ t.label }}</span>
-          <svg v-if="settings.theme === t.id" class="t-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <svg v-if="settings.layout === 'default' && settings.theme === t.id" class="t-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M20 6 9 17l-5-5" />
           </svg>
         </button>
@@ -134,7 +171,33 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', onDocPointer))
             </svg>
             {{ t.reward!.cost }}
           </span>
-          <svg v-else-if="settings.theme === t.id" class="t-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <svg v-else-if="settings.layout === 'default' && settings.theme === t.id" class="t-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M20 6 9 17l-5-5" />
+          </svg>
+        </button>
+
+        <div class="theme-divider">界面布局</div>
+
+        <button
+          v-for="option in layoutOptions"
+          :key="option.layout"
+          class="theme-row"
+          :class="{ on: settings.layout === option.layout, locked: !isOwned(option.reward.id) }"
+          :disabled="purchasing"
+          @click="pickLayout(option)"
+        >
+          <span class="dots">
+            <i v-for="(c, i) in option.dots" :key="i" :style="{ background: c }" />
+          </span>
+          <span class="t-label">{{ option.label }}</span>
+          <span v-if="!isOwned(option.reward.id)" class="t-cost">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="5" y="11" width="14" height="9" rx="2" />
+              <path d="M8 11V8a4 4 0 0 1 8 0v3" />
+            </svg>
+            {{ option.reward.cost }}
+          </span>
+          <svg v-else-if="settings.layout === option.layout" class="t-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M20 6 9 17l-5-5" />
           </svg>
         </button>
@@ -157,6 +220,8 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', onDocPointer))
 
 .theme-menu {
   min-width: 238px;
+  max-height: calc(100vh - 90px);
+  overflow-y: auto;
   padding: 8px;
 }
 

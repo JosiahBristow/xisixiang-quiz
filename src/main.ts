@@ -5,6 +5,7 @@ import { initSettings } from './stores/settings'
 import './styles/themes.css'
 import './styles/base.css'
 import './styles/markdown.css'
+import './styles/layouts.css'
 
 initSettings()
 

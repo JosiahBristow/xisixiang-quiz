@@ -10,10 +10,11 @@
 - **联机对战**：房间码 / 快速匹配实时 PK，正确+速度计分，胜负计入 PK 榜
 - **积分与成就**：答对 +10、PK 获胜 +80、活跃日 +20；12 枚徽章、等级称号、连击提示
 - **自定义头像**：上传后自动居中裁剪压缩到 256×256，显示在导航、排行榜、PK 与个人中心
-- **积分商城**：可用积分解锁 3 套主题与 3 枚荣誉徽章，徽章可佩戴展示在排行榜
+- **积分商城**：可用积分解锁 3 套主题、2 套界面布局（B站 / 抖音）与 3 枚荣誉徽章
 - **跳过已答对**：默认开启，练习与随机测试只刷还没做对的题，避免重复劳动
 - **收藏夹**：刷题时一键收藏，独立收藏页回看或只刷收藏题，登录后云端同步
 - **挖空自测**：隐藏选项、只留题干空位，逐级揭示，避免只记住 ABCD
+- **界面布局**：B站布局（粉色胶囊按钮 / 顶部标签）与抖音布局（暗色霓虹 / 手机底部导航）
 - **留言板**：登录可发帖 / 回复 / 点赞，支持 Markdown 编辑与实时预览，管理员可置顶、隐藏、删除
 - 纯静态站点（Vue 3 + Vite），可直接部署到 GitHub Pages
 - Supabase 提供邮箱登录、作答记录云同步与总榜 / 章节榜 / 周榜
@@ -53,7 +54,8 @@ npm run preview
    [`supabase/migrations/0007_rewards.sql`](supabase/migrations/0007_rewards.sql)、
    [`supabase/migrations/0008_points_balance.sql`](supabase/migrations/0008_points_balance.sql)、
    [`supabase/migrations/0009_board.sql`](supabase/migrations/0009_board.sql)、
-   [`supabase/migrations/0010_favorites.sql`](supabase/migrations/0010_favorites.sql)
+   [`supabase/migrations/0010_favorites.sql`](supabase/migrations/0010_favorites.sql)、
+   [`supabase/migrations/0011_layouts.sql`](supabase/migrations/0011_layouts.sql)
    （脚本幂等，可重复执行）。0001 会创建：
    - `profiles`：昵称（注册时自动生成）
    - `attempts`：逐题作答记录（进度 / 错题本 / 排行榜的数据源）
@@ -80,6 +82,8 @@ npm run preview
    30 秒频率校验）、管理员邮箱判定函数 `is_admin`（默认 `josiah_bristow@outlook.com`）。
 
    0010 创建收藏夹表 `favorites`（每题一条、按用户隔离）。
+
+   0011 扩展商城商品类型，加入 B站布局 / 抖音布局两个界面皮肤商品。
 3. 进入 **Authentication → Providers → Email**，关闭 **Confirm email**
    （自己人使用，注册后可立即登录；开着的话需要先点邮件里的确认链接）。
 4. 进入 **Project Settings → API**，复制 **Project URL** 和 **anon public key**，写入项目根目录 `.env`：
@@ -163,9 +167,12 @@ git push -u origin main
 - **成就**：共 12 枚徽章，覆盖首答、连击、答对题量、单章正确率、连续打卡、全勤周与 PK 胜场；
   达成时全局弹出解锁提示，个人中心可查看徽章墙与最近 7 天答题曲线。
 - 未登录时积分与徽章按本机记录计算；登录后随作答记录自动同步，积分榜只统计登录账号。
-- **积分商城**：积分余额 = 累计获得 − 商城消费。主题（朱砂 / 青瓷 / 夜航）与
-  荣誉徽章（青玉 / 流金 / 丹凤）可分别解锁；徽章穿戴后显示在排行榜与个人中心。
+- **积分商城**：积分余额 = 累计获得 − 商城消费。主题（朱砂 / 青瓷 / 夜航）、
+  界面布局（B站 / 抖音）与荣誉徽章（青玉 / 流金 / 丹凤）可分别解锁；徽章穿戴后显示在排行榜与个人中心。
   消费会从积分余额中扣除，并同步影响积分榜排名；等级仍按累计获得计算。
+- **界面布局**：B站布局为粉色主色、圆角胶囊按钮、顶部标签下划线；
+  抖音布局为暗色霓虹（红/青）、胶囊按钮，手机端启用底部导航栏（题库/测试/对战/留言/成就/排行），
+  顶部导航在手机端隐藏。两套布局只改变视觉与导航位置，所有功能保持不变。
 
 ## 七、收藏夹
 

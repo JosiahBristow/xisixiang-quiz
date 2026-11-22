@@ -4,6 +4,7 @@ import { useRoute } from 'vue-router'
 import AppHeader from './components/AppHeader.vue'
 import AuthModal from './components/AuthModal.vue'
 import AchievementToast from './components/AchievementToast.vue'
+import BottomNav from './components/BottomNav.vue'
 import { initAuth } from './stores/auth'
 import { ui } from './stores/ui'
 import { startAutoSync } from './lib/sync'
@@ -23,6 +24,7 @@ onMounted(async () => {
       <component :is="Component" :key="route.fullPath" />
     </transition>
   </router-view>
+  <BottomNav />
   <AuthModal v-if="ui.authOpen" @close="ui.authOpen = false" />
   <AchievementToast />
 </template>

@@ -38,6 +38,7 @@ export interface Attempt {
 }
 
 export type ThemeId = 'auto' | 'paper' | 'night' | 'bamboo' | 'ink' | 'cinnabar' | 'celadon' | 'nocturne'
+export type LayoutId = 'default' | 'bilibili' | 'douyin'
 export type QuizMode = 'practice' | 'recite' | 'cloze'
 
 export interface Settings {
@@ -46,6 +47,7 @@ export interface Settings {
   shuffle: boolean
   skipCorrect: boolean
   testCount: number
+  layout: LayoutId
 }
 
 export interface ChapterStat {

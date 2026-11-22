@@ -1,12 +1,13 @@
-import type { ThemeId } from '../types'
+import type { LayoutId, ThemeId } from '../types'
 
 export interface RewardItem {
   id: string
-  kind: 'theme' | 'badge'
+  kind: 'theme' | 'badge' | 'layout'
   name: string
   desc: string
   cost: number
   theme?: ThemeId
+  layout?: LayoutId
   char?: string
   tier?: 'bronze' | 'silver' | 'gold'
 }
@@ -36,6 +37,22 @@ export const REWARDS: RewardItem[] = [
     desc: '深靛夜色 · 紫金微光',
     cost: 600,
     theme: 'nocturne',
+  },
+  {
+    id: 'layout_bilibili',
+    kind: 'layout',
+    name: 'B站布局',
+    desc: '粉色胶囊按钮 · 顶部标签',
+    cost: 800,
+    layout: 'bilibili',
+  },
+  {
+    id: 'layout_douyin',
+    kind: 'layout',
+    name: '抖音布局',
+    desc: '暗色霓虹 · 手机底部导航',
+    cost: 1000,
+    layout: 'douyin',
   },
   {
     id: 'badge_jade',
@@ -68,6 +85,7 @@ export const REWARDS: RewardItem[] = [
 
 export const THEME_REWARDS = REWARDS.filter((r) => r.kind === 'theme')
 export const BADGE_REWARDS = REWARDS.filter((r) => r.kind === 'badge')
+export const LAYOUT_REWARDS = REWARDS.filter((r) => r.kind === 'layout')
 
 export function rewardById(id: string | null | undefined): RewardItem | undefined {
   if (!id) return undefined

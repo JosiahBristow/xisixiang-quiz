@@ -2,13 +2,13 @@
 import { computed, ref } from 'vue'
 import { BADGES, addDays, dayKeyOf, todayKey } from '../lib/incentives'
 import type { RewardItem } from '../lib/rewards'
-import { BADGE_REWARDS, THEME_REWARDS } from '../lib/rewards'
+import { BADGE_REWARDS, LAYOUT_REWARDS, THEME_REWARDS } from '../lib/rewards'
 import UserAvatar from '../components/UserAvatar.vue'
 import RewardBadge from '../components/RewardBadge.vue'
 import { attempts } from '../stores/progress'
 import { auth } from '../stores/auth'
 import { balancePoints, equipBadge, isOwned, purchaseReward } from '../stores/rewards'
-import { setTheme, settings } from '../stores/settings'
+import { setLayout, setTheme, settings } from '../stores/settings'
 import { ui } from '../stores/ui'
 import { pkStats } from '../stores/pkStats'
 import {
@@ -23,6 +23,7 @@ const isUnlocked = (id: string) => unlockedIds.value.has(id)
 
 const themeItems = THEME_REWARDS
 const badgeItems = BADGE_REWARDS
+const layoutItems = LAYOUT_REWARDS
 const shopMsg = ref('')
 
 function requireLogin(): boolean {
@@ -39,6 +40,31 @@ function themeAction(item: RewardItem): string {
 function badgeAction(item: RewardItem): string {
   if (!isOwned(item.id)) return '兑换'
   return auth.equippedBadge === item.id ? '摘下' : '佩戴'
+}
+
+function layoutAction(item: RewardItem): string {
+  if (!isOwned(item.id)) return '解锁'
+  return settings.layout === item.layout ? '使用中' : '使用'
+}
+
+async function handleLayout(item: RewardItem) {
+  if (!requireLogin()) return
+  shopMsg.value = ''
+  if (!isOwned(item.id)) {
+    const short = item.cost - balancePoints.value
+    if (short > 0) {
+      shopMsg.value = `积分不足，还差 ${short} 分`
+      return
+    }
+    if (!window.confirm(`使用 ${item.cost} 积分解锁「${item.name}」？`)) return
+    const res = await purchaseReward(item.id)
+    if (!res.ok) {
+      shopMsg.value = res.msg ?? '兑换失败，请稍后再试'
+      return
+    }
+    shopMsg.value = `已解锁「${item.name}」`
+  }
+  if (item.layout) setLayout(item.layout)
 }
 
 async function handleTheme(item: RewardItem) {
@@ -202,6 +228,33 @@ const statTiles = computed(() => [
                 @click="handleTheme(item)"
               >
                 {{ themeAction(item) }}
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="shop-group">
+          <h3>界面布局</h3>
+          <div class="shop-grid">
+            <div v-for="item in layoutItems" :key="item.id" class="shop-item">
+              <span class="si-layout" :class="item.layout" />
+              <div class="si-main">
+                <b>{{ item.name }}</b>
+                <small>{{ item.desc }}</small>
+              </div>
+              <span v-if="!isOwned(item.id)" class="si-price">{{ item.cost }} 积分</span>
+              <button
+                class="btn btn-sm"
+                :class="
+                  !isOwned(item.id)
+                    ? 'btn-primary'
+                    : settings.layout === item.layout
+                      ? 'btn-soft'
+                      : 'btn-ghost'
+                "
+                @click="handleLayout(item)"
+              >
+                {{ layoutAction(item) }}
               </button>
             </div>
           </div>
@@ -609,6 +662,22 @@ section.card.week {
   color: var(--gold);
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
+}
+
+.si-layout {
+  width: 30px;
+  height: 30px;
+  flex-shrink: 0;
+  border-radius: 9px;
+  border: 1px solid var(--line);
+}
+
+.si-layout.bilibili {
+  background: linear-gradient(135deg, #fb7299, #00aeec);
+}
+
+.si-layout.douyin {
+  background: linear-gradient(135deg, #25f4ee, #fe2c55);
 }
 
 .shop-item .btn {
