@@ -17,6 +17,7 @@
 - **界面布局**：B站布局（粉色胶囊按钮 / 顶部标签）与抖音布局（暗色霓虹 / 手机底部导航）
 - **留言板**：登录可发帖 / 回复 / 点赞，支持 Markdown 编辑与实时预览，管理员可置顶、隐藏、删除
 - **找回密码**：邮箱接收重置链接，回到站点设置新密码，登录页提供「忘记密码」入口
+- **管理员无限积分**：管理员账号商城余额显示 ∞，兑换商品不扣积分、不占用排行榜余额
 - 纯静态站点（Vue 3 + Vite），可直接部署到 GitHub Pages
 - Supabase 提供邮箱登录、作答记录云同步与总榜 / 章节榜 / 周榜
 - 深色、浅色、护眼、墨蓝四套主题，手机 / 电脑自适应
@@ -56,7 +57,8 @@ npm run preview
    [`supabase/migrations/0008_points_balance.sql`](supabase/migrations/0008_points_balance.sql)、
    [`supabase/migrations/0009_board.sql`](supabase/migrations/0009_board.sql)、
    [`supabase/migrations/0010_favorites.sql`](supabase/migrations/0010_favorites.sql)、
-   [`supabase/migrations/0011_layouts.sql`](supabase/migrations/0011_layouts.sql)
+   [`supabase/migrations/0011_layouts.sql`](supabase/migrations/0011_layouts.sql)、
+   [`supabase/migrations/0012_admin_points.sql`](supabase/migrations/0012_admin_points.sql)
    （脚本幂等，可重复执行）。0001 会创建：
    - `profiles`：昵称（注册时自动生成）
    - `attempts`：逐题作答记录（进度 / 错题本 / 排行榜的数据源）
@@ -85,6 +87,9 @@ npm run preview
    0010 创建收藏夹表 `favorites`（每题一条、按用户隔离）。
 
    0011 扩展商城商品类型，加入 B站布局 / 抖音布局两个界面皮肤商品。
+
+   0012 让管理员（`josiah_bristow@outlook.com`）拥有无限积分：重写 `purchase_reward`，
+   管理员兑换时跳过余额校验并以 0 积分入库，因此不会虚增/消耗积分榜余额。
 3. 进入 **Authentication → URL Configuration**：
    - **Site URL** 填线上地址，例如 `https://你的用户名.github.io/仓库名/`
    - **Redirect URLs** 加入线上地址与本地开发地址（`http://localhost:5173/`、`http://127.0.0.1:5199/`）
@@ -178,6 +183,8 @@ git push -u origin main
 - **积分商城**：积分余额 = 累计获得 − 商城消费。主题（朱砂 / 青瓷 / 夜航）、
   界面布局（B站 / 抖音）与荣誉徽章（青玉 / 流金 / 丹凤）可分别解锁；徽章穿戴后显示在排行榜与个人中心。
   消费会从积分余额中扣除，并同步影响积分榜排名；等级仍按累计获得计算。
+  管理员账号（默认 `josiah_bristow@outlook.com`）显示无限积分，兑换不扣分、购买记录按 0 分入库，
+  不会影响积分榜排名。管理员判定沿用留言板的 `is_admin()` 邮箱白名单。
 - **界面布局**：B站布局为粉色主色、圆角胶囊按钮、顶部标签下划线；
   抖音布局为暗色霓虹（红/青）、胶囊按钮，手机端启用底部导航栏（题库/测试/对战/留言/成就/排行），
   顶部导航在手机端隐藏。两套布局只改变视觉与导航位置，所有功能保持不变。

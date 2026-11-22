@@ -9,6 +9,7 @@ export const rewards = reactive({
   owned: [] as string[],
   spent: 0,
   loaded: false,
+  admin: false,
 })
 
 /** 积分余额 = 累计获得 − 商城消费 */
@@ -18,16 +19,26 @@ export function isOwned(itemId: string): boolean {
   return rewards.owned.includes(itemId)
 }
 
+/** 管理员无限积分，其余按积分余额判断 */
+export function canAfford(cost: number): boolean {
+  return rewards.admin || balancePoints.value >= cost
+}
+
 export async function loadRewards(): Promise<void> {
   if (!supabase || !auth.user) {
     rewards.owned = []
     rewards.spent = 0
+    rewards.admin = false
     rewards.loaded = true
     return
   }
-  const { data, error } = await supabase.from('user_rewards').select('item_id,cost')
-  if (!error && Array.isArray(data)) {
-    const rows = data as { item_id: string; cost: number }[]
+  const [adminRes, rewardsRes] = await Promise.all([
+    supabase.rpc('is_admin'),
+    supabase.from('user_rewards').select('item_id,cost'),
+  ])
+  rewards.admin = Boolean(adminRes.data)
+  if (!rewardsRes.error && Array.isArray(rewardsRes.data)) {
+    const rows = rewardsRes.data as { item_id: string; cost: number }[]
     rewards.owned = rows.map((r) => r.item_id)
     rewards.spent = rows.reduce((sum, r) => sum + Number(r.cost || 0), 0)
   }
@@ -39,7 +50,7 @@ export async function purchaseReward(itemId: string): Promise<{ ok: boolean; msg
   const item = rewardById(itemId)
   if (!item) return { ok: false, msg: '商品不存在' }
   if (isOwned(itemId)) return { ok: true }
-  if (balancePoints.value < item.cost) {
+  if (!canAfford(item.cost)) {
     return { ok: false, msg: `积分不足，还差 ${item.cost - balancePoints.value} 分` }
   }
 

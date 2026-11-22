@@ -5,7 +5,7 @@ import { LAYOUT_REWARDS, THEME_REWARDS } from '../lib/rewards'
 import type { ThemeId } from '../types'
 import type { LayoutId } from '../types'
 import { auth } from '../stores/auth'
-import { balancePoints, isOwned, purchaseReward } from '../stores/rewards'
+import { balancePoints, isOwned, purchaseReward, rewards } from '../stores/rewards'
 import { isDarkTheme, setLayout, setTheme, settings } from '../stores/settings'
 import { ui } from '../stores/ui'
 
@@ -61,9 +61,8 @@ async function pick(t: ThemeOption) {
       ui.authOpen = true
       return
     }
-    const short = t.reward.cost - balancePoints.value
-    if (short > 0) {
-      themeMsg.value = `积分不足，还差 ${short} 分`
+    if (!rewards.admin && t.reward.cost > balancePoints.value) {
+      themeMsg.value = `积分不足，还差 ${t.reward.cost - balancePoints.value} 分`
       return
     }
     if (!window.confirm(`使用 ${t.reward.cost} 积分解锁「${t.reward.name}」主题？`)) return
@@ -87,9 +86,8 @@ async function pickLayout(option: (typeof layoutOptions)[number]) {
       ui.authOpen = true
       return
     }
-    const short = option.reward.cost - balancePoints.value
-    if (short > 0) {
-      themeMsg.value = `积分不足，还差 ${short} 分`
+    if (!rewards.admin && option.reward.cost > balancePoints.value) {
+      themeMsg.value = `积分不足，还差 ${option.reward.cost - balancePoints.value} 分`
       return
     }
     if (!window.confirm(`使用 ${option.reward.cost} 积分解锁「${option.label}」？`)) return
@@ -205,7 +203,7 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', onDocPointer))
         <p v-if="themeMsg" class="theme-msg">{{ themeMsg }}</p>
 
         <router-link to="/me" class="theme-shop" @click="open = false">
-          <span>余额 {{ balancePoints }} 积分</span>
+          <span>余额 {{ rewards.admin ? '∞' : balancePoints }} 积分</span>
           <span>去商城 →</span>
         </router-link>
       </div>

@@ -7,7 +7,7 @@ import UserAvatar from '../components/UserAvatar.vue'
 import RewardBadge from '../components/RewardBadge.vue'
 import { attempts } from '../stores/progress'
 import { auth } from '../stores/auth'
-import { balancePoints, equipBadge, isOwned, purchaseReward } from '../stores/rewards'
+import { balancePoints, equipBadge, isOwned, purchaseReward, rewards } from '../stores/rewards'
 import { setLayout, setTheme, settings } from '../stores/settings'
 import { ui } from '../stores/ui'
 import { pkStats } from '../stores/pkStats'
@@ -51,9 +51,8 @@ async function handleLayout(item: RewardItem) {
   if (!requireLogin()) return
   shopMsg.value = ''
   if (!isOwned(item.id)) {
-    const short = item.cost - balancePoints.value
-    if (short > 0) {
-      shopMsg.value = `积分不足，还差 ${short} 分`
+    if (!rewards.admin && item.cost > balancePoints.value) {
+      shopMsg.value = `积分不足，还差 ${item.cost - balancePoints.value} 分`
       return
     }
     if (!window.confirm(`使用 ${item.cost} 积分解锁「${item.name}」？`)) return
@@ -71,9 +70,8 @@ async function handleTheme(item: RewardItem) {
   if (!requireLogin()) return
   shopMsg.value = ''
   if (!isOwned(item.id)) {
-    const short = item.cost - balancePoints.value
-    if (short > 0) {
-      shopMsg.value = `积分不足，还差 ${short} 分`
+    if (!rewards.admin && item.cost > balancePoints.value) {
+      shopMsg.value = `积分不足，还差 ${item.cost - balancePoints.value} 分`
       return
     }
     if (!window.confirm(`使用 ${item.cost} 积分解锁「${item.name}」主题？`)) return
@@ -91,9 +89,8 @@ async function handleBadge(item: RewardItem) {
   if (!requireLogin()) return
   shopMsg.value = ''
   if (!isOwned(item.id)) {
-    const short = item.cost - balancePoints.value
-    if (short > 0) {
-      shopMsg.value = `积分不足，还差 ${short} 分`
+    if (!rewards.admin && item.cost > balancePoints.value) {
+      shopMsg.value = `积分不足，还差 ${item.cost - balancePoints.value} 分`
       return
     }
     if (!window.confirm(`使用 ${item.cost} 积分解锁「${item.name}」徽章？`)) return
@@ -150,7 +147,7 @@ const statTiles = computed(() => [
             <RewardBadge v-if="auth.equippedBadge" :item-id="auth.equippedBadge" :size="20" />
           </div>
           <p class="me-sub">
-            积分 {{ balancePoints }} · 累计获得 {{ stats.points }} · 已答对 {{ stats.correct }} 题 · 解锁
+            积分 {{ rewards.admin ? '∞' : balancePoints }} · 累计获得 {{ stats.points }} · 已答对 {{ stats.correct }} 题 · 解锁
             {{ unlockedCount }}/{{ BADGES.length }} 成就
           </p>
           <div class="level-track"><i :style="{ width: stats.levelPercent + '%' }" /></div>
@@ -208,7 +205,7 @@ const statTiles = computed(() => [
             <h2 class="serif">积分商城</h2>
             <p>消费会从积分余额中扣除，并同步影响积分榜排名</p>
           </div>
-          <span class="badge badge-accent">{{ balancePoints }} 积分</span>
+          <span class="badge badge-accent">{{ rewards.admin ? '∞' : balancePoints }} 积分</span>
         </header>
 
         <p v-if="shopMsg" class="shop-msg">{{ shopMsg }}</p>
