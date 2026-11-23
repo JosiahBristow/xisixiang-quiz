@@ -41,11 +41,17 @@ export function seededQuestions(seed: number, count: number): Question[] {
   return pool.slice(0, Math.min(Math.max(count, 1), pool.length))
 }
 
-/** 答对 100 分 + 速度分最高 60 分 */
-export function pointsFor(correct: boolean, elapsedMs: number, limitMs: number): number {
+/** 答对 100 分 + 速度分最高 60 分；multiplier 用于最后一题双倍 */
+export function pointsFor(
+  correct: boolean,
+  elapsedMs: number,
+  limitMs: number,
+  multiplier = 1,
+): number {
   if (!correct) return 0
   const remain = Math.max(0, limitMs - Math.max(0, elapsedMs))
-  return 100 + Math.round((60 * remain) / Math.max(1, limitMs))
+  const base = 100 + Math.round((60 * remain) / Math.max(1, limitMs))
+  return base * multiplier
 }
 
 export function pickCorrect(question: Question, pick: string | null): boolean {

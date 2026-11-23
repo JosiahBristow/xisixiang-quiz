@@ -75,6 +75,9 @@ let autoJoined = false
 const isHost = computed(() => Boolean(room.value && auth.user && room.value.host_id === auth.user.id))
 const limitMs = computed(() => (room.value?.prefs.limit ?? 15) * 1000)
 const current = computed<Question | undefined>(() => questions.value[qIndex.value])
+const isLastQuestion = computed(
+  () => questions.value.length > 0 && qIndex.value === questions.value.length - 1,
+)
 const opponentUserId = computed(() => {
   if (!room.value || !auth.user) return null
   return room.value.host_id === auth.user.id ? room.value.guest_id : room.value.host_id
@@ -458,6 +461,7 @@ function startQuestion(i: number) {
   remainingMs.value = limitMs.value
   qStart = Date.now()
   phase.value = 'question'
+  if (i === questions.value.length - 1) toast.value = '最后一题：本题得分双倍'
   stopQuestionTimer()
   questionTick = setInterval(() => {
     if (phase.value !== 'question') {
@@ -521,8 +525,9 @@ function endQuestion() {
   stopQuestionTimer()
   const myOk = pickCorrect(q, myPick.value)
   const oppOk = pickCorrect(q, oppPick.value)
-  const myPts = pointsFor(myOk, myElapsed.value, limitMs.value)
-  const oppPts = pointsFor(oppOk, oppElapsed.value, limitMs.value)
+  const multiplier = isLastQuestion.value ? 2 : 1
+  const myPts = pointsFor(myOk, myElapsed.value, limitMs.value, multiplier)
+  const oppPts = pointsFor(oppOk, oppElapsed.value, limitMs.value, multiplier)
   myScore.value += myPts
   oppScore.value += oppPts
   log.value.push({ my: myOk, opp: oppOk, myPts, oppPts })
@@ -845,6 +850,7 @@ onBeforeUnmount(() => {
           <article v-if="current" class="q-card card">
             <header class="q-head">
               <span class="badge badge-accent">第 {{ qIndex + 1 }} / {{ questions.length }} 题</span>
+              <span v-if="isLastQuestion" class="badge bonus-badge">最后一题 · 双倍</span>
               <span class="timer" :class="{ urgent: remainingMs <= 5000 }">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
                   <circle cx="12" cy="12" r="8.5" />
@@ -886,6 +892,7 @@ onBeforeUnmount(() => {
                 <span class="rv-sep">｜</span>
                 对手 {{ oppPick ?? '未作答' }} · +{{ reveal.oppPts }} 分
               </p>
+              <p v-if="isLastQuestion" class="bonus-note">最后一题双倍：本题得分已 ×2</p>
             </div>
           </article>
         </section>
@@ -1356,7 +1363,14 @@ onBeforeUnmount(() => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+}
+
+.bonus-badge {
+  background: color-mix(in srgb, var(--gold) 16%, var(--surface));
+  border-color: color-mix(in srgb, var(--gold) 42%, var(--line));
+  color: var(--gold);
 }
 
 .timer {
@@ -1543,6 +1557,11 @@ onBeforeUnmount(() => {
 .rv-sep {
   margin: 0 4px;
   opacity: 0.5;
+}
+
+.reveal-box .bonus-note {
+  color: var(--gold);
+  font-weight: 600;
 }
 
 @keyframes rise {
