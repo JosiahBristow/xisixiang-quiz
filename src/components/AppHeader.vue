@@ -217,6 +217,7 @@ function defaultNavLabel(item: { name: string; label: string; short: string }) {
   font-size: 13.5px;
   font-weight: 500;
   color: var(--text-2);
+  white-space: nowrap;
   transition: background-color 0.15s, color 0.15s;
 }
 
@@ -360,6 +361,21 @@ function defaultNavLabel(item: { name: string; label: string; short: string }) {
 
 .menu-item.danger svg {
   color: var(--bad);
+}
+
+@media (max-width: 820px) {
+  .nav-long {
+    display: none;
+  }
+
+  .nav-short {
+    display: inline;
+  }
+
+  .nav a {
+    padding: 6px 9px;
+    font-size: 13px;
+  }
 }
 
 @media (max-width: 640px) {

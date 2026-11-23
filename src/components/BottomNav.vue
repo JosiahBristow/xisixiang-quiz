@@ -1,15 +1,18 @@
 <script setup lang="ts">
+import { computed } from 'vue'
 import { useRoute } from 'vue-router'
 import { settings } from '../stores/settings'
 import { NAV_ITEMS, isNavActive } from '../lib/navItems'
 
 const route = useRoute()
+
+const items = computed(() => NAV_ITEMS.filter((item) => item.mobile !== false))
 </script>
 
 <template>
   <nav v-if="settings.layout === 'douyin'" class="bottom-nav">
     <router-link
-      v-for="item in NAV_ITEMS"
+      v-for="item in items"
       :key="item.to"
       :to="item.to"
       :class="{ on: isNavActive(item, route.name) }"

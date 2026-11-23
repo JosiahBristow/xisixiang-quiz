@@ -7,6 +7,7 @@ import { favoriteCount } from '../stores/favorites'
 import { chapterStats, overall, wrongQuestions } from '../stores/progress'
 import { stats as inc, unlockedCount } from '../stores/incentives'
 import { balancePoints, rewards } from '../stores/rewards'
+import { knowledgeChapters, knowledgeTopicCount } from '../lib/knowledge'
 import { settings } from '../stores/settings'
 import { hasSupabase } from '../lib/supabase'
 import { pendingChapterFocus } from '../lib/focusChapter'
@@ -201,6 +202,19 @@ onMounted(focusPendingChapter)
           </button>
         </div>
       </section>
+
+      <router-link to="/knowledge" class="test-entry card know-entry">
+        <div class="te-main">
+          <span class="te-mark serif know-mark">知</span>
+          <div class="te-copy">
+            <h2>知识点汇总</h2>
+            <p>
+              {{ knowledgeChapters.length }} 章 · {{ knowledgeTopicCount }} 个知识点，按知识点回看题目与答案。
+            </p>
+          </div>
+        </div>
+        <span class="te-go">查看 →</span>
+      </router-link>
 
       <button v-if="wrongQuestions.length" class="wrong-banner card" @click="start('wrong')">
         <span class="wb-icon">!</span>
@@ -671,6 +685,24 @@ h1 {
   background: var(--accent);
   color: var(--accent-contrast);
   font-weight: 600;
+}
+
+/* ---------- 知识点入口 ---------- */
+.know-entry {
+  margin-top: 10px;
+}
+
+.know-mark {
+  background: color-mix(in srgb, var(--gold) 14%, var(--surface));
+  border-color: color-mix(in srgb, var(--gold) 38%, var(--line));
+  color: var(--gold);
+}
+
+.te-go {
+  flex-shrink: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--accent);
 }
 
 /* ---------- 错题本横幅 ---------- */
@@ -1160,6 +1192,10 @@ h1 {
   .chapter-card h3 {
     min-height: 42px;
     font-size: 14px;
+  }
+
+  .know-entry .te-go {
+    align-self: flex-end;
   }
 }
 </style>

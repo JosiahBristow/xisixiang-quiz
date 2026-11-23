@@ -7,6 +7,7 @@ import MeView from './views/MeView.vue'
 import BoardView from './views/BoardView.vue'
 import FavoritesView from './views/FavoritesView.vue'
 import LeaderboardView from './views/LeaderboardView.vue'
+import KnowledgeView from './views/KnowledgeView.vue'
 
 // GitHub Pages 无法做服务端重写，统一使用 hash 路由，任何仓库子路径下都能直接刷新
 const router = createRouter({
@@ -19,6 +20,7 @@ const router = createRouter({
     { path: '/me', name: 'me', component: MeView, meta: { title: '我的成就' } },
     { path: '/board', name: 'board', component: BoardView, meta: { title: '留言板' } },
     { path: '/favorites', name: 'favorites', component: FavoritesView, meta: { title: '收藏夹' } },
+    { path: '/knowledge', name: 'knowledge', component: KnowledgeView, meta: { title: '知识点汇总' } },
     { path: '/leaderboard', name: 'leaderboard', component: LeaderboardView, meta: { title: '排行榜' } },
     { path: '/:pathMatch(.*)*', redirect: '/' },
   ],

@@ -4,6 +4,8 @@ export interface NavItem {
   label: string
   short: string
   icon: string
+  /** 手机底部导航是否显示；知识点页从首页入口进入 */
+  mobile?: boolean
 }
 
 /** 顶栏 / 左侧栏 / 手机底栏共用同一份导航数据 */
@@ -14,6 +16,14 @@ export const NAV_ITEMS: NavItem[] = [
     label: '题库',
     short: '题库',
     icon: '<path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v16H6.5A2.5 2.5 0 0 0 4 21.5Z"/><path d="M4 5.5v16"/><path d="M8 7h8M8 11h6"/>',
+  },
+  {
+    to: '/knowledge',
+    name: 'knowledge',
+    label: '知识点',
+    short: '知识',
+    mobile: false,
+    icon: '<path d="M9 18h6M10 21h4"/><path d="M12 3a6 6 0 0 0-3.5 10.9c.6.5.9 1.2.9 2.1h5.2c0-.9.3-1.6.9-2.1A6 6 0 0 0 12 3Z"/>',
   },
   {
     to: '/test',
