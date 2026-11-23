@@ -3,6 +3,7 @@ import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import type { QuizMode, Question } from '../types'
 import { allQuestions, chapterById, questionById, sameAnswer, shuffle } from '../lib/bank'
+import { randomSeed, seedFor, shuffledQuestion } from '../lib/optionShuffle'
 import { latestByQuestion, recordAttempt, wrongQuestions } from '../stores/progress'
 import { favorites, isFavorite, toggleFavorite } from '../stores/favorites'
 import { currentStreak } from '../stores/incentives'
@@ -123,6 +124,11 @@ function build() {
     if (focus) list = [focus, ...list.filter((q) => q.id !== focusId)]
   }
   focusConsumed = true
+
+  if (settings.shuffleOptions) {
+    const seed = randomSeed()
+    list = list.map((q) => shuffledQuestion(q, seedFor(q.id, seed)))
+  }
 
   questions.value = list
   index.value = 0

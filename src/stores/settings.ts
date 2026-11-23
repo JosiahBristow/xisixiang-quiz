@@ -8,6 +8,7 @@ export const settings = reactive<Settings>({
   theme: 'auto',
   mode: 'practice',
   shuffle: true,
+  shuffleOptions: false,
   skipCorrect: true,
   testCount: 20,
   layout: 'default',
@@ -49,6 +50,7 @@ export function initSettings(): void {
   if (saved.theme) settings.theme = saved.theme
   if (saved.mode) settings.mode = saved.mode
   if (typeof saved.shuffle === 'boolean') settings.shuffle = saved.shuffle
+  if (typeof saved.shuffleOptions === 'boolean') settings.shuffleOptions = saved.shuffleOptions
   if (typeof saved.skipCorrect === 'boolean') settings.skipCorrect = saved.skipCorrect
   if (typeof saved.testCount === 'number') settings.testCount = saved.testCount
   if (saved.layout && ['default', 'bilibili', 'douyin'].includes(saved.layout)) {
@@ -68,6 +70,7 @@ export function initSettings(): void {
         theme: settings.theme,
         mode: settings.mode,
         shuffle: settings.shuffle,
+        shuffleOptions: settings.shuffleOptions,
         skipCorrect: settings.skipCorrect,
         testCount: settings.testCount,
         layout: settings.layout,

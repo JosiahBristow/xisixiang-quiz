@@ -45,6 +45,7 @@ export interface Settings {
   theme: ThemeId
   mode: QuizMode
   shuffle: boolean
+  shuffleOptions: boolean
   skipCorrect: boolean
   testCount: number
   layout: LayoutId

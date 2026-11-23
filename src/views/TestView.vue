@@ -3,6 +3,7 @@ import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import type { Question } from '../types'
 import { allQuestions, questionById, sameAnswer, shuffle } from '../lib/bank'
+import { randomSeed, seedFor, shuffledQuestion } from '../lib/optionShuffle'
 import { isFavorite, toggleFavorite } from '../stores/favorites'
 import { latestByQuestion, recordAttempts } from '../stores/progress'
 import { settings } from '../stores/settings'
@@ -12,7 +13,7 @@ type Phase = 'setup' | 'running' | 'result'
 
 const router = useRouter()
 
-const SESSION_KEY = 'qz.test.session.v1'
+const SESSION_KEY = 'qz.test.session.v2'
 const letters = ['A', 'B', 'C', 'D', 'E', 'F']
 const RING_C = 2 * Math.PI * 68
 const choices = [10, 20, 30, 50, 0]
@@ -29,6 +30,8 @@ const confirmSubmit = ref(false)
 
 let startedAt = 0
 let timerHandle: ReturnType<typeof setInterval> | null = null
+let sessionShuffle = false
+let optionSeed = 0
 
 const total = computed(() => questions.value.length)
 const current = computed<Question | undefined>(() => questions.value[index.value])
@@ -120,6 +123,8 @@ function persist() {
         index: index.value,
         elapsed: elapsed.value,
         chosen: chosen.value,
+        shuffle: sessionShuffle,
+        optionSeed,
       }),
     )
   } catch {
@@ -137,8 +142,13 @@ function clearSession() {
 
 function start() {
   settings.testCount = chosen.value
+  sessionShuffle = settings.shuffleOptions
+  optionSeed = sessionShuffle ? randomSeed() : 0
   const pool = shuffle(testPool.value)
-  questions.value = pool.slice(0, actualCount.value)
+  const picked = pool.slice(0, actualCount.value)
+  questions.value = sessionShuffle
+    ? picked.map((q) => shuffledQuestion(q, seedFor(q.id, optionSeed)))
+    : picked
   resetAnswers()
   index.value = 0
   elapsed.value = 0
@@ -166,12 +176,23 @@ function restore() {
       index?: number
       elapsed?: number
       chosen?: number
+      shuffle?: boolean
+      optionSeed?: number
     }
     const list = (saved.ids ?? [])
       .map((id) => questionById.get(id))
       .filter((q): q is Question => Boolean(q))
     if (!list.length) throw new Error('empty')
-    questions.value = list
+    sessionShuffle = Boolean(saved.shuffle)
+    optionSeed =
+      typeof saved.optionSeed === 'number'
+        ? saved.optionSeed
+        : sessionShuffle
+          ? randomSeed()
+          : 0
+    questions.value = sessionShuffle
+      ? list.map((q) => shuffledQuestion(q, seedFor(q.id, optionSeed)))
+      : list
     resetAnswers()
     Object.assign(answers, saved.answers ?? {})
     index.value = Math.min(Math.max(saved.index ?? 0, 0), list.length - 1)
@@ -244,6 +265,8 @@ function abandon() {
   index.value = 0
   elapsed.value = 0
   restored.value = false
+  sessionShuffle = false
+  optionSeed = 0
   phase.value = 'setup'
 }
 
@@ -371,6 +394,17 @@ onBeforeUnmount(() => {
           </div>
           <label class="switch-row">
             <input v-model="settings.skipCorrect" type="checkbox" />
+            <span class="switch" />
+          </label>
+        </div>
+
+        <div class="skip-row">
+          <div class="skip-copy">
+            <b>打乱选项</b>
+            <small>每道题的 A/B/C/D 顺序随机排列</small>
+          </div>
+          <label class="switch-row">
+            <input v-model="settings.shuffleOptions" type="checkbox" />
             <span class="switch" />
           </label>
         </div>

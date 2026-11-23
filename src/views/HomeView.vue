@@ -251,6 +251,11 @@ onMounted(focusPendingChapter)
               <span class="switch" />
               随机顺序
             </label>
+            <label class="switch-row" title="开启后每道题的选项顺序会重新打乱">
+              <input v-model="settings.shuffleOptions" type="checkbox" />
+              <span class="switch" />
+              打乱选项
+            </label>
           </div>
         </header>
 

@@ -3,16 +3,23 @@ import { computed } from 'vue'
 import { useRouter } from 'vue-router'
 import type { Chapter, Question } from '../types'
 import { chapterOfQuestion, questionById } from '../lib/bank'
+import { randomSeed, seedFor, shuffledQuestion } from '../lib/optionShuffle'
 import { clearFavorites, favorites, toggleFavorite } from '../stores/favorites'
+import { settings } from '../stores/settings'
 
 const router = useRouter()
 const letters = ['A', 'B', 'C', 'D', 'E', 'F']
+// 3B：每次打开收藏夹都换一组顺序
+const optionSeed = randomSeed()
 
 const items = computed(() => {
   return favorites.value
     .map((entry) => {
-      const q = questionById.get(entry.id)
-      if (!q) return null
+      const original = questionById.get(entry.id)
+      if (!original) return null
+      const q = settings.shuffleOptions
+        ? shuffledQuestion(original, seedFor(original.id, optionSeed))
+        : original
       return { q, chapter: chapterOfQuestion.get(q.id) as Chapter | undefined, at: entry.at }
     })
     .filter((item): item is { q: Question; chapter: Chapter | undefined; at: string } => Boolean(item))
@@ -102,6 +109,9 @@ function practice() {
         </footer>
       </article>
 
+      <p v-if="settings.shuffleOptions && count" class="fav-note">
+        已开启「打乱选项」：每次打开收藏夹，选项顺序都会重新排列。
+      </p>
       <p v-if="count" class="fav-note">
         收藏题不受「跳过已答对」影响，点击星标可随时移除。
       </p>
